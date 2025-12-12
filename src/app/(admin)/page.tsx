@@ -6,7 +6,7 @@ import { TaskMatching } from "@/components/dashboard/TaskMatching";
 import { TasksTable } from "@/components/dashboard/TasksTable";
 import { TimerSidebar } from "@/components/dashboard/TimerSidebar";
 import { dataProvider } from "@/lib/dataProvider";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Checkpoint {
   id: number;
@@ -50,6 +50,17 @@ export default function ZohoHoursDashboard() {
     setCurrentView('dashboard');
     setSelectedCheckpoint(null);
   };
+
+  // Update body background based on current view
+  useEffect(() => {
+    if (currentView === 'task-matching') {
+      document.body.classList.add('bg-brand-50', 'dark:bg-brand-900');
+      document.body.classList.remove('bg-gray-50');
+    } else {
+      document.body.classList.add('bg-gray-50');
+      document.body.classList.remove('bg-brand-50', 'dark:bg-brand-900');
+    }
+  }, [currentView]);
 
   return (
     <div className="min-h-screen flex">

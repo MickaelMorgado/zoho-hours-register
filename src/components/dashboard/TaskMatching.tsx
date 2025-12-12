@@ -73,7 +73,7 @@ export const TaskMatching: React.FC<TaskMatchingProps> = ({ checkpoint, tasks, o
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-100 dark:bg-brand-900">
       {/* Fixed Header */}
       <div className="fixed top-0 left-[570px] right-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className="px-6 py-4">
@@ -113,7 +113,7 @@ export const TaskMatching: React.FC<TaskMatchingProps> = ({ checkpoint, tasks, o
       </div>
 
         {/* Scrollable Content */}
-        <div className="space-y-8 p-6 pt-40">
+        <div className="space-y-8 p-6 pt-40 bg-gray-100 dark:bg-brand-900">
           {/* Task Matches */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

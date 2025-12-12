@@ -12,7 +12,7 @@ export default function AdminLayout({
       {/* Main Content Area */}
       <div className="flex-1">
         {/* Page Content */}
-        <div className="mx-auto w-full max-w-none px-4 sm:px-6 lg:px-8">{children}</div>
+        <div className="mx-auto w-full max-w-none">{children}</div>
       </div>
     </div>
   );

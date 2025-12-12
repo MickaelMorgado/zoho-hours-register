@@ -231,8 +231,8 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
 
                       {/* Floating Badge with Dual Arrows - shows in task matching mode */}
                       {currentView === 'task-matching' && savedCheckpointId === (checkpoint.id || 'current') && (
-                        <div className="absolute top-0 -right-13 z-50">
-                          <div className="bg-gray-300 text-white rounded-full p-2 shadow-xl">
+                        <div className="absolute top-0 left-0 right-[-33px] bottom-0 z-50">
+                          <div className="bg-gray-100 dark:bg-brand-900 text-gray-900 dark:text-white rounded-l-full p-2 shadow-xl">
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
                               <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
