@@ -280,12 +280,14 @@ export class DataProvider {
           setCheckpoints(prev => [...prev, endedCheckpoint]);
         }
 
+        // Generate default description with timer number
+        const timerNumber = checkpoints.length + (currentCheckpoint ? 1 : 0) + 1;
         const newCheckpoint = {
           id: checkpointId,
           startTime: now,
           endTime: null,
           duration: '00:00:00',
-          description: '',
+          description: `Timer ${timerNumber}`,
           isRunning: true
         };
 

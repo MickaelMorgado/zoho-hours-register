@@ -138,13 +138,16 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
   };
 
   // Initialize input values for new checkpoints and sync with current descriptions
+  // Only set defaults for checkpoints that don't already have custom input values
   React.useEffect(() => {
     setInputValues(prev => {
       const newValues = { ...prev };
       checkpoints.forEach(cp => {
-        newValues[cp.id] = cp.description || '';
+        if (!(cp.id in newValues)) {
+          newValues[cp.id] = cp.description || '';
+        }
       });
-      if (currentCheckpoint) {
+      if (currentCheckpoint && !('current' in newValues)) {
         newValues['current'] = currentCheckpoint.description || '';
       }
       return newValues;
@@ -199,7 +202,7 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                 <div className="flex items-center justify-between mb-1">
                   <input
                     type="text"
-                    placeholder={`Checkpoint ${checkpoint.displayNumber}`}
+                    placeholder={`Timer ${checkpoint.displayNumber}`}
                     value={inputValues[checkpoint.id || 'current'] || ''}
                     onChange={(e) => handleUpdateDescription(checkpoint.id || 'current', e.target.value)}
                     className={`flex-1 bg-transparent text-xs font-medium border-none outline-none rounded px-1 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
