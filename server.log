@@ -1,0 +1,501 @@
+
+> free-nextjs-admin-dashboard@2.2.1 dev
+> next dev
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/mickael/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/mickael/dengun/zoho-hours-register/package-lock.json
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.1.81:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 570ms
+ GET /profile 200 in 1678ms (compile: 1497ms, render: 181ms)
+ GET /profile 200 in 50ms (compile: 4ms, render: 46ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- ZOHO_PORTAL_NAME: 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 903ms (compile: 257ms, render: 646ms)
+ GET /profile 200 in 89ms (compile: 22ms, render: 68ms)
+ GET /profile 200 in 32ms (compile: 5ms, render: 27ms)
+ ✓ Compiled in 124ms
+ ✓ Compiled in 68ms
+ ✓ Compiled in 114ms
+ ✓ Compiled in 60ms
+ GET / 200 in 2.1s (compile: 2.0s, render: 40ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 768ms (compile: 52ms, render: 716ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 264ms (compile: 1932µs, render: 262ms)
+ GET /profile 200 in 191ms (compile: 70ms, render: 121ms)
+ GET / 200 in 19ms (compile: 6ms, render: 13ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970451
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970451/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970451/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970451/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970451/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 663ms (compile: 5ms, render: 658ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970451
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970451/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970451/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970451/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970451/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 297ms (compile: 3ms, render: 294ms)
+ GET /profile 200 in 36ms (compile: 6ms, render: 30ms)
+ GET / 200 in 17ms (compile: 4ms, render: 13ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 606ms (compile: 2ms, render: 604ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 257ms (compile: 1138µs, render: 256ms)
+ GET / 200 in 72ms (compile: 3ms, render: 69ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 654ms (compile: 3ms, render: 651ms)
+ GET / 200 in 71ms (compile: 10ms, render: 61ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 657ms (compile: 3ms, render: 654ms)
+ GET / 200 in 73ms (compile: 8ms, render: 64ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 401,
+  statusText: '',
+  errorData: { error: { code: 6401, message: 'Invalid OAuth access token.' } },
+  url: 'https://projectsapi.zoho.com/restapi/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 401  - {"code":6401,"message":"Invalid OAuth access token."}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 401  - {"code":6401,"message":"Invalid OAuth access token."}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:132:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:144:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  130 |         }
+  131 |
+> 132 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  133 |       }
+  134 |
+  135 |       return await response.json();
+ GET /api/zoho/projects 500 in 800ms (compile: 180ms, render: 620ms)
+ GET / 200 in 100ms (compile: 15ms, render: 85ms)
+🔧 API Route Debug:
+- ZOHO_CLIENT_ID: ✓ Set
+- ZOHO_CLIENT_SECRET: ✓ Set
+- Portal ID (header): 632970450
+- Access Token (header): ✓ Provided
+- Access Token (env): ✓ Set
+Zoho API Error Details: {
+  status: 400,
+  statusText: '',
+  errorData: {
+    error: {
+      status_code: '400',
+      instance: '/api/v3/portal/632970450/projects/',
+      title: 'URL_RULE_NOT_CONFIGURED',
+      error_type: 'FIELDS_VALIDATION_ERROR',
+      details: [Array]
+    }
+  },
+  url: 'https://projectsapi.zoho.com/api/v3/portal/632970450/projects/'
+}
+Zoho API request failed: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:141:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:153:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  139 |         }
+  140 |
+> 141 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  142 |       }
+  143 |
+  144 |       return await response.json();
+Error fetching Zoho projects: Error: Zoho API Error: 400  - {"status_code":"400","instance":"/api/v3/portal/632970450/projects/","title":"URL_RULE_NOT_CONFIGURED","error_type":"FIELDS_VALIDATION_ERROR","details":[{"message":"Given URL is wrong"}]}
+    at ZohoClient.makeRequest (src/lib/zohoClient.ts:141:15)
+    at async ZohoClient.getProjects (src/lib/zohoClient.ts:153:22)
+    at async GET (src/app/api/zoho/projects/route.ts:47:22)
+  139 |         }
+  140 |
+> 141 |         throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+      |               ^
+  142 |       }
+  143 |
+  144 |       return await response.json();
+ GET /api/zoho/projects 500 in 904ms (compile: 80ms, render: 824ms)
+[?25h

@@ -28,6 +28,7 @@
 - **Local-First Timer**: Timer state managed client-side with local storage for offline capability
 - **Optimistic UI**: UI updates immediately, with background sync for reliability
 - **Token-Based Auth**: Simple API token configuration, no complex user management
+- **User-Friendly Configuration**: Portal ID and OAuth settings configured via UI for non-developer efficiency
 
 ## Design Patterns
 ### Frontend Patterns
@@ -35,6 +36,7 @@
 - **Custom Hooks**: Encapsulate timer logic, API calls, and state management
 - **Context Providers**: Global state for authentication, current project, and pending logs
 - **Compound Components**: Timer component with start/stop/play controls
+- **Profile-Based Configuration**: Critical settings (portal ID, OAuth tokens) managed via user profile UI
 
 ### Backend Patterns (Serverless)
 - **Function-per-Endpoint**: Each API endpoint as separate Vercel function
@@ -42,6 +44,14 @@
 - **Repository Pattern**: Abstract data access layer for database operations
 - **Service Layer**: Business logic encapsulated in utility modules
 - **Stateless Design**: No server state, all data persisted to database
+- **Header-Based Config**: API routes read user configuration from request headers (non-developer friendly)
+
+### Configuration Management
+- **Environment Variables**: Development/testing configuration only
+- **User Profile Settings**: Production configuration via UI (portal ID, OAuth tokens)
+- **LocalStorage Persistence**: User settings persist across sessions
+- **Header Propagation**: Frontend sends user settings as headers to backend
+- **Fallback Strategy**: Environment variables as development fallbacks
 
 ## Component Naming Conventions
 ### General Rules
@@ -107,8 +117,28 @@ Frontend Request → Check Cache → API Call to Zoho → Update Cache →
 Return Data → Update UI
 ```
 
+### User Configuration Flow (Non-Developer Friendly)
+```
+Profile Page → User enters portal ID/OAuth settings → Save to localStorage → 
+useProjects hook reads localStorage → Sends x-zoho-portal-id header → 
+API route uses header instead of env vars → Zoho API call with user config
+```
+
 ## Performance Patterns
 - **Lazy Loading**: Components and routes loaded on demand
 - **Memoization**: Expensive calculations cached (task matching, API responses)
 - **Debouncing**: API calls throttled for search and filtering
 - **Background Sync**: Non-blocking data synchronization
+
+## Configuration Architecture
+### Development vs Production
+- **Development**: Environment variables for quick testing
+- **Production**: User profile settings for accessibility
+- **Fallback Strategy**: Environment variables as backup for development
+- **Header-Based API**: All user-specific config passed via headers
+
+### Security Considerations
+- **Client-Side Storage**: OAuth tokens stored in localStorage (browser security)
+- **Header Transmission**: Sensitive data sent via HTTPS headers only
+- **No Server Storage**: Backend remains stateless, no persistent user data
+- **Token Refresh**: OAuth flow handles token expiration automatically

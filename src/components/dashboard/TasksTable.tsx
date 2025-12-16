@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRightIcon } from '../../icons';
 
 interface Task {
@@ -11,6 +11,7 @@ interface Task {
   status: string;
   priority: string;
   assignedTo: string;
+  projectId?: string;
 }
 
 interface TasksTableProps {
@@ -18,19 +19,59 @@ interface TasksTableProps {
   formatDate: (dateString: string) => string;
   getStatusColor: (status: string) => string;
   getPriorityColor: (priority: string) => string;
+  activeProjectIds?: string[];
+  fetchTasksFromProjects?: (projectIds: string[]) => Promise<Task[]>;
 }
 
 export const TasksTable: React.FC<TasksTableProps> = ({
-  tasks,
+  tasks: initialTasks,
   formatDate,
   getStatusColor,
   getPriorityColor,
+  activeProjectIds = [],
+  fetchTasksFromProjects,
 }) => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterProject, setFilterProject] = useState('all');
+  const [tasks, setTasks] = useState(initialTasks);
+  const [loading, setLoading] = useState(false);
 
-  const projects = [...new Set(tasks.map(task => ({ id: task.id, name: task.projectName })))];
+  // Fetch tasks when active project IDs change
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (activeProjectIds.length === 0) {
+        setTasks([]);
+        return;
+      }
+
+      if (fetchTasksFromProjects) {
+        setLoading(true);
+        try {
+          const fetchedTasks = await fetchTasksFromProjects(activeProjectIds);
+          setTasks(fetchedTasks);
+        } catch (error) {
+          console.error('Failed to fetch tasks:', error);
+          setTasks(initialTasks); // Fallback to initial tasks
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setTasks(initialTasks);
+      }
+    };
+
+    fetchTasks();
+  }, [activeProjectIds, fetchTasksFromProjects, initialTasks]);
+
+  const projects = Array.from(
+    new Map(
+      tasks.map(task => [task.projectId || task.id, { id: task.projectId || task.id, name: task.projectName }])
+    ).values()
+  );
+
+  // Get unique status values from tasks
+  const uniqueStatuses = Array.from(new Set(tasks.map(task => task.status).filter(Boolean)));
 
   const filteredTasks = tasks.filter(task => {
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
@@ -58,9 +99,11 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                 className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
+                {uniqueStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replace('_', ' ').toUpperCase()}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -123,13 +166,13 @@ export const TasksTable: React.FC<TasksTableProps> = ({
                       </a>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ').toUpperCase()}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(String(task.status || 'pending'))}`}>
+                        {String(task.status || 'pending').replace('_', ' ').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-                        {task.priority.toUpperCase()}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(String(task.priority || 'medium'))}`}>
+                        {String(task.priority || 'medium').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-4 py-3">

@@ -206,6 +206,86 @@ export class DataProvider {
     return {
       tasks: this.tasks,
 
+      // Method to fetch tasks from activated projects
+      fetchTasksFromProjects: async (activeProjectIds) => {
+        if (!activeProjectIds || activeProjectIds.length === 0) {
+          return [];
+        }
+
+        try {
+          // Get token and credentials from localStorage
+          const savedTokens = localStorage.getItem('zoho_tokens');
+          const savedCredentials = localStorage.getItem('zoho_credentials');
+          let headers = {};
+          let credentials = null;
+
+          if (savedTokens) {
+            try {
+              const tokens = JSON.parse(savedTokens);
+              if (tokens.access_token) {
+                headers['x-zoho-access-token'] = tokens.access_token;
+              }
+            } catch (e) {
+              console.warn('Error parsing saved tokens:', e);
+            }
+          }
+
+          if (savedCredentials) {
+            try {
+              credentials = JSON.parse(savedCredentials);
+              if (credentials.portalId) {
+                headers['x-zoho-portal-id'] = credentials.portalId;
+              }
+            } catch (e) {
+              console.warn('Error parsing saved credentials:', e);
+            }
+          }
+
+          // Fetch tasks from all active projects
+          const allTasks = [];
+          for (const projectId of activeProjectIds) {
+            try {
+              const response = await fetch(`/api/zoho/projects/${projectId}/tasks`, {
+                headers,
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                const projectTasks = data.tasks || [];
+
+                // Transform Zoho tasks to match the expected format
+                const transformedTasks = projectTasks.map(task => ({
+                  id: task.id,
+                  name: task.name,
+                  projectName: task.project?.name || `Project ${projectId}`,
+                  zohoTaskUrl: `https://projects.zoho.com/portal/${credentials.portalId}/projects/${projectId}/tasks/${task.id}`,
+                  status: typeof task.status === 'object' ? task.status.name || 'pending' : (task.status || 'pending'),
+                  priority: typeof task.priority === 'object' ? task.priority.name || 'medium' : (task.priority || 'medium'),
+                  assignedTo: task.assignee_name || 'Unassigned',
+                  completed: task.completed || task.status === 'completed' || task.status === 'closed',
+                  projectId: projectId.toString(),
+                  estimatedHours: task.duration ? parseFloat(task.duration) : 0,
+                  actualHours: task.percent_complete ? (task.percent_complete / 100) * (task.duration ? parseFloat(task.duration) : 0) : 0,
+                  dueDate: task.created_time ? new Date(task.created_time).toISOString().split('T')[0] : null,
+                }));
+
+                allTasks.push(...transformedTasks);
+              } else {
+                console.warn(`Failed to fetch tasks for project ${projectId}:`, response.status);
+              }
+            } catch (error) {
+              console.warn(`Error fetching tasks for project ${projectId}:`, error);
+            }
+          }
+
+          return allTasks;
+        } catch (error) {
+          console.error('Error fetching tasks from projects:', error);
+          // Fall back to dummy data
+          return this.tasks.filter(task => activeProjectIds.includes(task.projectId));
+        }
+      },
+
       getFilteredTasks: (filterStatus, filterPriority, filterProject) => {
         let filtered = this.tasks;
 
@@ -218,7 +298,7 @@ export class DataProvider {
         }
 
         if (filterProject !== 'all') {
-          filtered = filtered.filter(task => task.projectId === parseInt(filterProject));
+          filtered = filtered.filter(task => task.projectId.toString() === filterProject);
         }
 
         return filtered;
@@ -244,8 +324,11 @@ export class DataProvider {
 
       getStatusColor: (status) => {
         switch (status) {
-          case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200';
-          case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200';
+          case 'completed':
+          case 'closed': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200';
+          case 'in_progress':
+          case 'inprogress':
+          case 'open': return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200';
           case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200';
           default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
         }
