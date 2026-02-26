@@ -1,72 +1,70 @@
 # Progress: Zoho Hours Register
 
 ## What Works
-- **Project Documentation**: Complete memory bank with all core files established
-- **Requirements Definition**: Clear scope and feature specifications documented
-- **Architecture Planning**: System design and technology stack finalized
-- **Development Environment**: Ready for coding with defined patterns and constraints
+- **Timer/Checkpoint System**: Full timer with checkpoint creation, duration tracking, description editing, localStorage persistence
+- **Zoho OAuth Flow**: Token exchange, automatic refresh on 401, connection status detection
+- **Setup Wizard**: 4-step onboarding (client ID, client secret, portal ID, OAuth authorization)
+- **Profile/Settings**: Credential management page for portal and OAuth configuration
+- **Project Management**: Add projects by ID, toggle active/inactive, remove, clear all (localStorage-backed)
+- **Task Fetching**: Tasks loaded from Zoho API for active projects
+- **Task Browsing**: Filterable task table with status, priority, and project filters
+- **Task Matching**: Multi-strategy text similarity scoring (substring, Jaccard, token containment, prefix, self-assigned bonus, recency bonus)
+- **Time Log Submission**: POST to Zoho Projects API with date, hours, minutes, notes, start/end times
+- **Checkpoint Tracking**: Logged checkpoints marked with green highlighting, tracked via localStorage
+- **Dark Mode**: Full dark/light theme support
+- **Connection Status**: Visual indicator for Zoho API connection state
+- **Deployment**: Vercel configuration ready
 
 ## What's Left to Build
-### Phase 1: Foundation (Current)
-- Project structure setup (frontend/backend directories)
-- Build system configuration (Vite, TypeScript)
-- Basic TailAdmin integration and layout
-- Database schema design and setup
 
-### Phase 2: Core Functionality
-- Zoho OAuth authentication implementation
-- API client for Zoho project/task fetching
-- Timer component with start/stop functionality
-- Local storage for pending logs
-- Basic dashboard UI with sidebar and main content
+### High Priority
+- [ ] Populate StatsCards with real data from Zoho API (currently shows zeros)
+- [ ] Add time log history view (view/edit/delete submitted logs)
+- [ ] Expose `getTimeLogs`, `updateTimeLog`, `deleteTimeLog` via API routes
+- [ ] Write proper README (replace TailAdmin boilerplate)
+- [ ] Add basic error handling for network failures during log submission
 
-### Phase 3: Advanced Features
-- Task matching algorithm development
-- Log confirmation and Zoho sync
-- Project overview and task list views
-- Error handling and offline mode
-- Responsive design optimization
+### Medium Priority
+- [ ] Add pagination for task lists (performance with large projects)
+- [ ] Clean up unused TailAdmin template pages (calendar, charts, forms, alerts, etc.)
+- [ ] Remove unused TailAdmin layout components (`AppSidebar`, `AppHeader`)
+- [ ] Add basic reporting/time summaries
+- [ ] Improve task matching accuracy based on usage feedback
 
-### Phase 4: Polish & Testing
-- UI/UX refinements
-- Comprehensive testing (unit, integration)
-- Performance optimization
-- Documentation completion
+### Low Priority
+- [ ] Add unit/integration tests
+- [ ] Mobile responsiveness improvements
+- [ ] Offline mode for timer (works but could be more robust)
+- [ ] Multi-device sync (would need server-side storage)
+- [ ] Bulk time log submission for multiple checkpoints
 
 ## Current Status
-- **Stage**: Early Development / Basic UI Layout
-- **Readiness**: 15% - Documentation complete, basic dashboard UI with app description implemented
-- **Blockers**: None - all prerequisites established
-- **Timeline Estimate**: 4-6 weeks for MVP with current scope
+- **Stage**: MVP functional — daily use for time tracking
+- **Readiness**: ~70% — core workflow complete, needs polish and secondary features
+- **Blockers**: None — app is usable as-is
+- **Commits**: 7 total
 
-## Known Issues
-- **Zoho API Integration**: Requires research into specific API endpoints and authentication flow
-- **TailAdmin Customization**: Need to verify compatibility with React 18 and TypeScript
-- **Task Matching Accuracy**: Algorithm design may need iteration based on user feedback
+## Milestones
+- [x] Project scaffolding (Next.js + TailAdmin template)
+- [x] Vercel deployment configuration
+- [x] Timer/checkpoint sidebar implementation
+- [x] Zoho OAuth integration (token exchange + auto-refresh)
+- [x] Setup wizard for user onboarding
+- [x] Project management (add/remove/toggle)
+- [x] Task fetching from Zoho API
+- [x] Task matching with similarity scoring
+- [x] Time log submission to Zoho
+- [x] Dark mode support
+- [x] Connection status indicator
+- [ ] StatsCards with real data
+- [ ] Time log history (CRUD)
+- [ ] Template cleanup
+- [ ] Tests
+- [ ] Reporting features
 
-## Evolution of Project Decisions
-### Initial Planning (Current)
-- **Frontend Choice**: React + Vite selected for modern development experience and Vercel compatibility
-- **Backend Approach**: Vercel serverless functions as lightweight API proxy
-- **Database Strategy**: Local storage for simplicity, optional Vercel Postgres for caching
-- **Authentication**: Direct Zoho API token configuration via environment variables
-- **Deployment**: Vercel for seamless frontend and serverless backend hosting
-
-### Potential Future Adjustments
-- **Task Matching**: May upgrade to AI service if string matching proves insufficient
-- **Architecture**: Could migrate to full backend if serverless limitations become problematic
-- **UI Framework**: Alternative admin templates if TailAdmin integration proves challenging
-- **Authentication**: May integrate with third-party auth providers for enhanced security
-
-## Milestones Achieved
-- ✅ Project brief and requirements finalized
-- ✅ Technology stack and architecture defined
-- ✅ Memory bank documentation complete
-- ✅ Development patterns and conventions established
-
-## Upcoming Milestones
-- 🟡 Project structure and build system setup
-- 🟡 Basic UI layout with TailAdmin
-- 🟡 Zoho API integration prototype
-- 🟡 Timer functionality implementation
-- 🟡 End-to-end time logging flow
+## Evolution of Decisions
+- **Started with**: Direct API token auth (env vars only) -> **Evolved to**: OAuth flow with user-configurable credentials via UI
+- **Started with**: API routes as business logic layer -> **Evolved to**: Thin proxy routes with `ZohoClient` doing the work
+- **Started with**: TailAdmin full layout -> **Evolved to**: Custom minimal layout (no sidebar/header from template)
+- **Considered**: AI-based task matching -> **Chose**: Client-side text similarity (no API costs, fast enough)
+- **Considered**: Database for state -> **Chose**: localStorage (single-user, simpler architecture)

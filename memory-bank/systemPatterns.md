@@ -2,113 +2,167 @@
 
 ## System Architecture
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React App     │    │ Vercel Functions│    │   Zoho API      │
-│   (Vercel)      │◄──►│   (Serverless)  │◄──►│   (External)    │
-│                 │    │                 │    │                 │
-│ - Timer UI      │    │ - Auth Service  │    │ - Projects      │
-│ - Dashboard     │    │ - Data Sync     │    │ - Tasks         │
-│ - Log Manager   │    │ - Cache Layer   │    │ - Time Logs     │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                       ┌─────────────────┐
-                       │   Database      │
-                       │   (Vercel PG)   │
-                       │                 │
-                       │ - User Sessions │
-                       │ - Pending Logs  │
-                       │ - Cache Data    │
-                       └─────────────────┘
+┌──────────────────────────────┐
+│   Next.js App (Vercel)       │
+│                              │
+│  ┌────────────────────────┐  │     ┌──────────────────────┐
+│  │ React Frontend         │  │     │   Zoho APIs          │
+│  │                        │  │     │                      │
+│  │ - TimerSidebar         │  │     │ projectsapi.zoho.com │
+│  │ - TaskMatching         │  │     │  /restapi/portal/... │
+│  │ - ProjectsOverview     │──┼────►│  - /projects/        │
+│  │ - TasksTable           │  │     │  - /tasks/           │
+│  │ - SetupWizard          │  │     │  - /timelogs/        │
+│  │ - StatsCards            │  │     │                      │
+│  └────────┬───────────────┘  │     │ accounts.zoho.com    │
+│           │                  │     │  /oauth/v2/token     │
+│  ┌────────▼───────────────┐  │     └──────────────────────┘
+│  │ API Routes (Serverless)│  │
+│  │                        │  │
+│  │ /api/zoho/token        │──┼────► OAuth token exchange
+│  │ /api/zoho/projects     │──┼────► Project listing
+│  │ /api/zoho/projects/    │  │
+│  │   [id]/tasks           │──┼────► Task fetching
+│  │ /api/zoho/projects/    │  │
+│  │   [id]/tasks/[id]/     │  │
+│  │   timelogs             │──┼────► Time log creation
+│  └────────────────────────┘  │
+│                              │
+│  ┌────────────────────────┐  │
+│  │ localStorage           │  │
+│  │                        │  │
+│  │ - zoho_credentials     │  │
+│  │ - zoho_tokens          │  │
+│  │ - user_projects        │  │
+│  │ - zoho-checkpoints     │  │
+│  │ - current-checkpoint   │  │
+│  │ - logged-checkpoint-ids│  │
+│  └────────────────────────┘  │
+└──────────────────────────────┘
 ```
 
-## Key Technical Decisions
-- **Monolithic Frontend**: Single React app for simplicity, with clear component boundaries
-- **Serverless API Proxy**: Vercel functions act as lightweight proxy to Zoho API
-- **Local-First Timer**: Timer state managed client-side with local storage for offline capability
-- **Optimistic UI**: UI updates immediately, with background sync for reliability
-- **Token-Based Auth**: Simple API token configuration, no complex user management
+## Key Architectural Decisions
+
+### 1. Client-Side State (localStorage)
+All user data is stored in localStorage — no database. This keeps the architecture simple and avoids server-side user management. Trade-off: data is browser-specific and not shareable across devices.
+
+### 2. API Routes as Thin Proxies
+Next.js API routes act as proxies to the Zoho API. They:
+- Receive auth credentials via custom headers (`x-zoho-access-token`, `x-zoho-portal-id`)
+- Create a `ZohoClient` instance per request
+- Forward to Zoho and return the response
+- Exception: `/api/zoho/token` handles OAuth exchange server-side (keeps client_secret off the client)
+
+### 3. Auto Token Refresh
+The `zohoFetch` wrapper intercepts 401 responses, calls `/api/zoho/token` with the refresh_token, updates localStorage, dispatches a `zoho-token-refreshed` custom event, and retries the original request. This makes token expiry invisible to the user.
+
+### 4. User-Configurable Portal (No Hardcoded Env)
+In production, portal ID and OAuth credentials come from the user via the SetupWizard/Profile page, not from environment variables. Env vars serve as development-only fallbacks. This makes the app usable by anyone with a Zoho account.
+
+### 5. Task Matching Algorithm (Client-Side)
+Task matching runs entirely in the browser using multiple text similarity strategies:
+- **Substring/phrase matching** — direct text containment
+- **Stemmed Jaccard similarity** — word overlap after stemming
+- **Token containment** — what fraction of description words appear in task name
+- **Prefix matching** — matching beginnings of words
+- **Self-assigned bonus** (+15 points) — tasks assigned to the current user
+- **Recency bonus** (up to +10 points) — recently modified tasks ranked higher
+- Top 50 matches shown, sorted by combined score
+
+### 6. Checkpoint-Based Timer
+Instead of one-shot timers per task, the app uses a continuous timer with checkpoints:
+- Timer runs in the sidebar continuously
+- User clicks to create checkpoints at natural break points
+- Each checkpoint records start time, end time, and duration
+- Descriptions can be added/edited at any time
+- Logged checkpoints are tracked and visually marked
 
 ## Design Patterns
+
 ### Frontend Patterns
-- **Container/Presentational**: Separate logic from presentation components
-- **Custom Hooks**: Encapsulate timer logic, API calls, and state management
-- **Context Providers**: Global state for authentication, current project, and pending logs
-- **Compound Components**: Timer component with start/stop/play controls
+- **Context Providers**: `AuthContext` (auth state), `ThemeContext` (dark mode), `SidebarContext` (TailAdmin)
+- **Custom Hooks**: `useProjects` (CRUD + localStorage), `useModal`, `useGoBack`
+- **Wrapper Pattern**: `zohoFetch` wraps native fetch with auth header injection and auto-refresh
+- **View Switching**: Main page toggles between dashboard view and task-matching view (no router)
+- **localStorage as Database**: All state persisted to localStorage with JSON serialization
 
-### Backend Patterns (Serverless)
-- **Function-per-Endpoint**: Each API endpoint as separate Vercel function
-- **Middleware Chain**: Authentication, rate limiting, error handling per function
-- **Repository Pattern**: Abstract data access layer for database operations
-- **Service Layer**: Business logic encapsulated in utility modules
-- **Stateless Design**: No server state, all data persisted to database
-
-## Component Naming Conventions
-### General Rules
-- **PascalCase**: All component names use PascalCase (e.g., `StatsCards`, `TaskMatching`)
-- **Descriptive Names**: Component names should clearly indicate their purpose and functionality
-- **Component Type Suffixes**: Use descriptive suffixes to indicate component type when helpful:
-  - `Panel`: Main content areas with complex functionality (e.g., `TimerPanel`)
-  - `Sidebar`: Compact side panel components (e.g., `TimerSidebar`)
-  - `Table`: Data display in table format (e.g., `TasksTable`)
-  - `Cards`: Statistics or summary information in card layout (e.g., `StatsCards`)
-  - `Display`: Simple display components (e.g., `DurationDisplay`)
-  - `Overview`: Summary views of collections (e.g., `ProjectsOverview`)
-- **Feature Prefixes**: For complex features, consider feature-based naming to group related components
-- **Avoid Generic Names**: Use specific names like `TaskMatching` instead of `TaskSelector` to indicate unique functionality
-
-### Current Dashboard Components
-- **StatsCards**: Displays key statistics (active projects, completed tasks, hours logged, total projects) in card format
-- **TimerPanel**: Main panel for managing time tracking timers with detailed controls and history
-- **TimerSidebar**: Compact sidebar view of timers with quick actions and status indicators
-- **TaskMatching**: Interface for displaying task matches based on checkpoint descriptions using similarity algorithms (note: currently read-only, no save functionality implemented)
-- **TasksTable**: Tabular display of project tasks with status, priority, and assignment information
-- **DurationDisplay**: Real-time duration display component for active timers
-- **ProjectsOverview**: Comprehensive project dashboard with overview metrics and navigation
-
-### Proposed Naming Improvements (Future Refactoring)
-- Consider renaming `Checkpoints*` components to `Timer*` for clearer indication of time tracking functionality
-- Evaluate `TaskMatching` → `TaskMatcher` for more conventional naming
-- Assess `ProjectsOverview` → `ProjectDashboard` for consistency with dashboard theme
-- **Critical**: Rename save button from "Save time log and match to tasks" to "Match to Task" since clicking navigates to task selection view (not direct saving)
-
-## Component Relationships
-### Core Components
-- **App**: Root component with routing and global context
-- **Dashboard**: Main layout with sidebar and content area
-- **Sidebar**: Timer controls and pending logs list
-- **MainDashboard**: Main dashboard page component that switches between views:
-  - Dashboard view: Statistics, project overview, and task list display
-  - Task matching view: Intelligent task matching interface for checkpoints
-- **TimerModal**: Description input and task matching interface
+### Backend Patterns
+- **Proxy Pattern**: API routes proxy to Zoho API, adding no business logic
+- **Header-Based Auth**: Client sends credentials via headers, server creates `ZohoClient` per request
+- **Stateless Routes**: No server-side state or sessions; everything comes from headers/request body
+- **ZohoClient Class**: Encapsulates all Zoho API URL construction, auth headers, and error handling
 
 ### Data Flow
-1. App initializes → Load API token from environment
-2. App fetches projects → Cached locally or via Vercel function
-3. Timer started → State managed locally in browser storage
-4. Timer stopped → Pending log created in local storage
-5. Log confirmed → Description matched to tasks → Synced to Zoho via API
-
-## Critical Implementation Paths
-### Initialization Flow
 ```
-App Load → Check Environment Config → Validate API Token → Load Cached Data
+Timer Running → User Creates Checkpoint → Description Added →
+"Match to Task" Clicked → TaskMatching View Opens →
+Similarity Algorithm Scores All Tasks → User Selects Best Match →
+Time Log POSTed to Zoho API → Checkpoint Marked as Logged
 ```
 
-### Timer to Log Flow
+## Component Architecture
+
+### Layout Hierarchy
 ```
-Start Timer → Local State Update → Stop Timer → Create Pending Log → 
-User Input Description → Task Matching → Confirm Log → Sync to Zoho
+RootLayout (ThemeProvider > SidebarProvider > AuthProvider)
+  └── AdminLayout (minimal wrapper)
+       └── MainPage
+            ├── TimerSidebar (fixed left, w-64/72/96)
+            └── Main Content Area
+                 ├── Dashboard View
+                 │    ├── ConnectionStatus
+                 │    ├── SetupWizard (if not configured)
+                 │    ├── StatsCards
+                 │    ├── ProjectsOverview
+                 │    └── TasksTable
+                 └── TaskMatching View
+                      └── TaskMatching (similarity results + log submission)
 ```
 
-### Data Synchronization
+### Key Components
+| Component | Purpose | State Source |
+|-----------|---------|--------------|
+| `TimerSidebar` | Timer, checkpoints, descriptions, logged status | localStorage |
+| `TaskMatching` | Score tasks, display matches, submit time logs | Zoho API + localStorage |
+| `ProjectsOverview` | Add/remove/toggle projects by ID | localStorage via `useProjects` |
+| `TasksTable` | Browse tasks with status/priority/project filters | Zoho API via `dataProvider` |
+| `SetupWizard` | 4-step onboarding (client ID, secret, portal, OAuth) | localStorage |
+| `StatsCards` | Summary metrics (projects, tasks, hours) | Derived from local data |
+| `ConnectionStatus` | Zoho connection state indicator | `AuthContext` |
+| `DurationDisplay` | Live-updating duration for active timer | Props + interval |
+
+### Component Naming Conventions
+- **PascalCase** for all component names
+- **Suffix indicates type**: `Sidebar`, `Table`, `Cards`, `Display`, `Overview`, `Wizard`, `Status`
+- **Feature-descriptive names**: `TaskMatching` (not `TaskSelector`), `TimerSidebar` (not `Sidebar`)
+
+## Configuration Architecture
+
+### Development
 ```
-Frontend Request → Check Cache → API Call to Zoho → Update Cache → 
-Return Data → Update UI
+.env.local → ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, etc.
 ```
+
+### Production
+```
+SetupWizard/Profile Page → localStorage (zoho_credentials, zoho_tokens)
+  → zohoFetch reads localStorage → sends x-zoho-* headers
+  → API routes read headers → create ZohoClient → call Zoho API
+```
+
+### Fallback Strategy
+Environment variables serve as development-only defaults. In production, user-provided values in localStorage always take precedence.
 
 ## Performance Patterns
-- **Lazy Loading**: Components and routes loaded on demand
-- **Memoization**: Expensive calculations cached (task matching, API responses)
-- **Debouncing**: API calls throttled for search and filtering
-- **Background Sync**: Non-blocking data synchronization
+- **localStorage Caching**: Projects and checkpoints cached locally
+- **Client-Side Matching**: Task similarity runs in browser (no API call)
+- **Lazy View Switching**: Dashboard and TaskMatching views render on demand
+- **Auto-Refresh**: Token refresh happens transparently without page reload
+- **Interval-Based Timer**: `setInterval` for live duration display updates
+
+## Security Considerations
+- **OAuth tokens in localStorage**: Standard browser security model; tokens are per-browser
+- **Client secret in localStorage**: Necessary for token refresh from client; mitigated by HTTPS-only transmission
+- **Header-based auth**: Credentials sent via HTTPS headers to API routes
+- **No server-side persistence**: Backend is stateless — no user data stored server-side
+- **Token format detection**: Automatically chooses `Bearer` vs `Zoho-oauthtoken` based on token prefix

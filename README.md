@@ -1,191 +1,108 @@
-# TailAdmin Next.js - Free Next.js Tailwind Admin Dashboard Template
+# Zoho Hours Register
 
-TailAdmin is a free and open-source admin dashboard template built on **Next.js and Tailwind CSS** providing developers with everything they need to create a feature-rich and data-driven: back-end, dashboard, or admin panel solution for any sort of web project.
+A time tracking dashboard for logging hours against Zoho Projects tasks. Features a timer-based checkpoint system with intelligent task matching that submits time logs directly to the Zoho Projects API.
 
-![TailAdmin - Next.js Dashboard Preview](./banner.png)
+Built with Next.js 16, React 18, TypeScript, and Tailwind CSS v4 on a TailAdmin dashboard base.
 
-With TailAdmin Next.js, you get access to all the necessary dashboard UI components, elements, and pages required to build a high-quality and complete dashboard or admin panel. Whether you're building a dashboard or admin panel for a complex web application or a simple website.
+## Features
 
-TailAdmin utilizes the powerful features of **Next.js 16** and common features of Next.js such as server-side rendering (SSR), static site generation (SSG), and seamless API route integration. Combined with the advancements of **React 19** and the robustness of **TypeScript**, TailAdmin is the perfect solution to help get your project up and running quickly.
+- **Timer Sidebar** — Always-visible timer with checkpoint creation and description editing
+- **Task Matching** — Multi-strategy text similarity algorithm scores tasks against checkpoint descriptions
+- **Time Log Submission** — Direct POST to Zoho Projects API with date, hours, minutes, and time range
+- **OAuth Integration** — Zoho OAuth 2.0 with automatic token refresh on 401 responses
+- **Setup Wizard** — 4-step onboarding for OAuth credentials and portal configuration
+- **Project Management** — Add/remove/toggle Zoho projects by ID
+- **Task Browsing** — Filterable task table with status, priority, and project filters
+- **Dark Mode** — Full dark/light theme support
+- **Connection Status** — Visual Zoho API connection indicator
 
-## Overview
-
-TailAdmin provides essential UI components and layouts for building feature-rich, data-driven admin dashboards and control panels. It's built on:
-
-* Next.js 16.x
-* React 19
-* TypeScript
-* Tailwind CSS V4
-
-### Quick Links
-
-* [✨ Visit Website](https://tailadmin.com)
-* [📄 Documentation](https://tailadmin.com/docs)
-* [⬇️ Download](https://tailadmin.com/download)
-* [🖌️ Figma Design File (Community Edition)](https://www.figma.com/community/file/1463141366275764364)
-* [⚡ Get PRO Version](https://tailadmin.com/pricing)
-
-### Demos
-
-* [Free Version](https://nextjs-free-demo.tailadmin.com)
-* [Pro Version](https://nextjs-demo.tailadmin.com)
-
-### Other Versions
-
-- [Next.js Version](https://github.com/TailAdmin/free-nextjs-admin-dashboard)
-- [React.js Version](https://github.com/TailAdmin/free-react-tailwind-admin-dashboard)
-- [Vue.js Version](https://github.com/TailAdmin/vue-tailwind-admin-dashboard)
-- [Angular Version](https://github.com/TailAdmin/free-angular-tailwind-dashboard)
-- [Laravel Version](https://github.com/TailAdmin/tailadmin-laravel)
-
-## Installation
+## Getting Started
 
 ### Prerequisites
 
-To get started with TailAdmin, ensure you have the following prerequisites installed and set up:
+- Node.js 18+ (recommended 20+)
+- A Zoho Projects account with API access
+- Zoho OAuth client credentials (create at [Zoho API Console](https://api-console.zoho.com/))
 
-* Node.js 18.x or later (recommended to use Node.js 20.x or later)
-
-### Cloning the Repository
-
-Clone the repository using the following command:
+### Installation
 
 ```bash
-git clone https://github.com/TailAdmin/free-nextjs-admin-dashboard.git
+npm install
 ```
 
-> Windows Users: place the repository near the root of your drive if you face issues while cloning.
+### Development
 
-1. Install dependencies:
+```bash
+npm run dev
+```
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+Open [http://localhost:3000](http://localhost:3000). On first visit, the Setup Wizard will guide you through configuring your Zoho OAuth credentials and portal ID.
 
-   > Use `--legacy-peer-deps` flag if you face peer-dependency error during installation.
+### Environment Variables (optional, for development)
 
-2. Start the development server:
+Create `.env.local` with:
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+```
+ZOHO_CLIENT_ID=your_client_id
+ZOHO_CLIENT_SECRET=your_client_secret
+```
 
-## Components
+In production, all configuration is done via the Setup Wizard or Settings page — no env vars needed.
 
-TailAdmin is a pre-designed starting point for building a web-based dashboard using Next.js and Tailwind CSS. The template includes:
+### Build
 
-* Sophisticated and accessible sidebar
-* Data visualization components
-* Profile management and custom 404 page
-* Tables and Charts(Line and Bar)
-* Authentication forms and input elements
-* Alerts, Dropdowns, Modals, Buttons and more
-* Can't forget Dark Mode 🕶️
+```bash
+npm run build
+npm run start
+```
 
-All components are built with React and styled using Tailwind CSS for easy customization.
+## How It Works
 
-## Feature Comparison
+1. **Setup** — Complete the 4-step wizard (client ID, client secret, portal ID, OAuth authorization)
+2. **Add Projects** — Enter Zoho project IDs in the Projects Overview section
+3. **Run Timer** — Timer runs in the sidebar; click to create checkpoints at break points
+4. **Add Descriptions** — Describe what you worked on for each checkpoint
+5. **Match to Tasks** — Click "Match to Task" and the system scores all tasks using text similarity
+6. **Submit Log** — Select the best match and submit; time log is POSTed to Zoho Projects API
 
-### Free Version
+## Tech Stack
 
-* 1 Unique Dashboard
-* 30+ dashboard components
-* 50+ UI elements
-* Basic Figma design files
-* Community support
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Frontend | React 18, TypeScript |
+| Styling | Tailwind CSS v4 |
+| UI Base | TailAdmin dashboard template |
+| Icons | lucide-react |
+| State | localStorage (no database) |
+| API | Next.js API routes (Zoho proxy) |
+| Auth | Zoho OAuth 2.0 with auto-refresh |
+| Deployment | Vercel |
 
-### Pro Version
+## Project Structure
 
-* 7 Unique Dashboards: Analytics, Ecommerce, Marketing, CRM, SaaS, Stocks, Logistics (more coming soon)
-* 500+ dashboard components and UI elements
-* Complete Figma design file
-* Email support
+```
+src/
+├── app/
+│   ├── (admin)/              # Main app routes
+│   │   ├── page.tsx          # Dashboard (timer + task matching)
+│   │   └── profile/page.tsx  # Settings/credentials page
+│   └── api/zoho/             # Zoho API proxy routes
+├── components/dashboard/     # Dashboard components
+├── context/                  # Auth, Theme, Sidebar contexts
+├── hooks/                    # useProjects, useModal, useGoBack
+├── lib/                      # ZohoClient, zohoFetch, dataProvider
+└── types/                    # TypeScript interfaces
+```
 
-To learn more about pro version features and pricing, visit our [pricing page](https://tailadmin.com/pricing).
+## Deployment
 
-## Changelog
+Configured for Vercel deployment. See `vercel.json` for configuration.
 
-### Version 2.1.0 - [November 15, 2025]
-
-* Updated to Next.js 16.x
-* Fixed all reported minor bugs
-
-### Version 2.0.2 - [March 25, 2025]
-
-* Upgraded to Next.js 16.x for [CVE-2025-29927](https://nextjs.org/blog/cve-2025-29927) concerns
-* Included overrides vectormap for packages to prevent peer dependency errors during installation.
-* Migrated from react-flatpickr to flatpickr package for React 19 support
-
-### Version 2.0.1 - [February 27, 2025]
-
-#### Update Overview
-
-* Upgraded to Tailwind CSS v4 for better performance and efficiency.
-* Updated class usage to match the latest syntax and features.
-* Replaced deprecated class and optimized styles.
-
-#### Next Steps
-
-* Run npm install or yarn install to update dependencies.
-* Check for any style changes or compatibility issues.
-* Refer to the Tailwind CSS v4 [Migration Guide](https://tailwindcss.com/docs/upgrade-guide) on this release. if needed.
-* This update keeps the project up to date with the latest Tailwind improvements. 🚀
-
-### v2.0.0 (February 2025)
-
-A major update focused on Next.js 16 implementation and comprehensive redesign.
-
-#### Major Improvements
-
-* Complete redesign using Next.js 16 App Router and React Server Components
-* Enhanced user interface with Next.js-optimized components
-* Improved responsiveness and accessibility
-* New features including collapsible sidebar, chat screens, and calendar
-* Redesigned authentication using Next.js App Router and server actions
-* Updated data visualization using ApexCharts for React
-
-#### Breaking Changes
-
-* Migrated from Next.js 14 to Next.js 16
-* Chart components now use ApexCharts for React
-* Authentication flow updated to use Server Actions and middleware
-
-[Read more](https://tailadmin.com/docs/update-logs/nextjs) on this release.
-
-### v1.3.4 (July 01, 2024)
-
-* Fixed JSvectormap rendering issues
-
-### v1.3.3 (June 20, 2024)
-
-* Fixed build error related to Loader component
-
-### v1.3.2 (June 19, 2024)
-
-* Added ClickOutside component for dropdown menus
-* Refactored sidebar components
-* Updated Jsvectormap package
-
-### v1.3.1 (Feb 12, 2024)
-
-* Fixed layout naming consistency
-* Updated styles
-
-### v1.3.0 (Feb 05, 2024)
-
-* Upgraded to Next.js 14
-* Added Flatpickr integration
-* Improved form elements
-* Enhanced multiselect functionality
-* Added default layout component
+```bash
+vercel
+```
 
 ## License
 
-TailAdmin Next.js Free Version is released under the MIT License.
-
-## Support
-If you find this project helpful, please consider giving it a star on GitHub. Your support helps us continue developing and maintaining this template.
+MIT
