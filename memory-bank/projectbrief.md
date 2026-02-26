@@ -1,26 +1,26 @@
 # Project Brief: Zoho Hours Register
 
 ## Overview
-This project aims to build a web application for efficient time tracking and logging hours specifically for Zoho projects and tasks. The application will integrate with Zoho's API to fetch project tasks, provide a dashboard interface using TailAdmin library, and include smart timer functionality with automatic task matching.
+A web application for efficient time tracking and logging hours against Zoho Projects tasks. Built on the TailAdmin Next.js dashboard template, it provides a timer-based checkpoint system with intelligent task matching that submits time logs directly to the Zoho Projects API.
 
 ## Core Requirements
-- **Zoho API Integration**: Direct API token authentication for accessing Zoho projects and tasks
-- **Timer Functionality**: Sidebar-based timer that can be started for any activity, with pending logs that persist until confirmed
-- **Task Matching**: Intelligent matching of user-provided descriptions to appropriate Zoho project tasks when confirming logs
-- **Dashboard UI**: Clean, responsive dashboard built with TailAdmin library for managing projects
-- **Dual Content Areas**:
-  - Sidebar: Timer controls and pending log management
-  - Main content: Project overview or detailed task lists for selected projects
+- **Zoho OAuth Integration**: OAuth 2.0 authentication with automatic token refresh for accessing Zoho Projects API
+- **Timer/Checkpoint System**: Sidebar-based timer that creates checkpoints with descriptions, persisted to localStorage
+- **Task Matching**: Multi-strategy text similarity algorithm that scores and ranks Zoho tasks against checkpoint descriptions
+- **Time Log Submission**: Direct POST to Zoho Projects API with date, hours, minutes, notes, and time range
+- **Dashboard UI**: Clean dashboard built on TailAdmin with project management, task browsing, and stats
+- **User Configuration**: Setup wizard and profile page for OAuth credentials and portal configuration (no hardcoded env vars needed in production)
 
 ## Success Criteria
-- Users can easily start/stop timers and log time against Zoho tasks
-- Accurate task matching reduces manual selection overhead
-- Intuitive dashboard experience for project and time management
-- Reliable Zoho API integration with proper error handling
-- Simple, token-based access to Zoho data
-- Responsive design that works across devices
+- Users can start/stop timers and create checkpoints with descriptions
+- Checkpoints can be matched to Zoho tasks using intelligent similarity scoring
+- Time logs are submitted directly to Zoho Projects API
+- OAuth tokens refresh automatically on expiry (401 interception)
+- Works with any Zoho Projects portal (user-configurable portal ID)
+- Responsive design with dark mode support
 
-## Scope Limitations
-- Initial release focuses on time logging; future versions may include reporting features
-- Single API token authentication (no user management)
-- Desktop-first design with mobile optimization
+## Scope
+- **In scope**: Timer, checkpoints, task matching, time log submission, project/task browsing, OAuth flow
+- **Out of scope (for now)**: Reporting/analytics, time log editing/deletion via UI, team management, mobile app
+- **Auth model**: Single-user, client-side localStorage credentials (no server-side user management)
+- **Deployment**: Vercel (Next.js + serverless API routes)

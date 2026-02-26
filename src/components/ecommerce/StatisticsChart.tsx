@@ -17,9 +17,9 @@ export default function StatisticsChart() {
       position: "top",
       horizontalAlign: "left",
     },
-    colors: ["#465FFF", "#9CB9FF"], // Define line colors
+    colors: ["#6b7ec8", "#99aae5"], // Define line colors
     chart: {
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: "Zoho Puvi, sans-serif",
       height: 310,
       type: "line", // Set the chart type to 'line'
       toolbar: {

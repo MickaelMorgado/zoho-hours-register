@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ArrowRightIcon } from '../../icons';
+import { TaskFilters, TaskFilterValues, ProjectInfo, applyTaskFilters } from './TaskFilters';
 
 interface Task {
-  id: number;
+  id: string;
   name: string;
   projectName: string;
   zohoTaskUrl: string;
@@ -21,6 +22,7 @@ interface TasksTableProps {
   getPriorityColor: (priority: string) => string;
   activeProjectIds?: string[];
   fetchTasksFromProjects?: (projectIds: string[]) => Promise<Task[]>;
+  projects?: ProjectInfo[];
 }
 
 export const TasksTable: React.FC<TasksTableProps> = ({
@@ -30,10 +32,9 @@ export const TasksTable: React.FC<TasksTableProps> = ({
   getPriorityColor,
   activeProjectIds = [],
   fetchTasksFromProjects,
+  projects: externalProjects = [],
 }) => {
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterPriority, setFilterPriority] = useState('all');
-  const [filterProject, setFilterProject] = useState('all');
+  const [filters, setFilters] = useState<TaskFilterValues>({ status: 'all', priority: 'all', project: 'all' });
   const [tasks, setTasks] = useState(initialTasks);
   const [loading, setLoading] = useState(false);
 
@@ -64,25 +65,26 @@ export const TasksTable: React.FC<TasksTableProps> = ({
     fetchTasks();
   }, [activeProjectIds, fetchTasksFromProjects, initialTasks]);
 
-  const projects = Array.from(
-    new Map(
-      tasks.map(task => [task.projectId || task.id, { id: task.projectId || task.id, name: task.projectName }])
-    ).values()
-  );
+  // Use external projects list (real names from useProjects) when available,
+  // otherwise derive from task data
+  const projects: ProjectInfo[] = externalProjects.length > 0
+    ? externalProjects
+    : Array.from(
+        new Map(
+          tasks.map(task => [task.projectId || task.id, { id: String(task.projectId || task.id), name: task.projectName }])
+        ).values()
+      );
 
   // Get unique status values from tasks
-  const uniqueStatuses = Array.from(new Set(tasks.map(task => task.status).filter(Boolean)));
+  const uniqueStatuses = useMemo(
+    () => Array.from(new Set(tasks.map(task => task.status).filter(Boolean))),
+    [tasks],
+  );
 
-  const filteredTasks = tasks.filter(task => {
-    const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
-    const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
-    const matchesProject = filterProject === 'all' || task.projectName === projects.find(p => p.id.toString() === filterProject)?.name;
-
-    return matchesStatus && matchesPriority && matchesProject;
-  });
+  const filteredTasks = useMemo(() => applyTaskFilters(tasks, filters), [tasks, filters]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mt-8">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mt-8">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tasks List</h2>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">All tasks from your projects with filtering options</p>
@@ -90,53 +92,12 @@ export const TasksTable: React.FC<TasksTableProps> = ({
       <div className="p-6">
         <div className="space-y-6">
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Status:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              >
-                <option value="all">All Status</option>
-                {uniqueStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status.replace('_', ' ').toUpperCase()}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Priority:</label>
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              >
-                <option value="all">All Priority</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Project:</label>
-              <select
-                value={filterProject}
-                onChange={(e) => setFilterProject(e.target.value)}
-                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              >
-                <option value="all">All Projects</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <TaskFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            statuses={uniqueStatuses}
+            projects={projects}
+          />
 
           {/* Tasks Table */}
           <div className="overflow-x-auto">

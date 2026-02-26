@@ -11,9 +11,9 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 
 export default function BarChartOne() {
   const options: ApexOptions = {
-    colors: ["#465fff"],
+    colors: ["#6b7ec8"],
     chart: {
-      fontFamily: "Outfit, sans-serif",
+      fontFamily: "Zoho Puvi, sans-serif",
       type: "bar",
       height: 180,
       toolbar: {
@@ -62,7 +62,7 @@ export default function BarChartOne() {
       show: true,
       position: "top",
       horizontalAlign: "left",
-      fontFamily: "Outfit",
+      fontFamily: "Zoho Puvi",
     },
     yaxis: {
       title: {

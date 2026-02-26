@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { zohoFetch } from '@/lib/zohoFetch';
 
 export interface Project {
   id: string;
@@ -17,7 +18,7 @@ export interface UseProjectsReturn {
   error: string | null;
   refetch: () => Promise<void>;
   toggleProject: (projectId: string) => void;
-  addProject: (projectId: string) => Promise<void>;
+  addProject: (projectId: string, projectName?: string) => Promise<'added' | 'exists'>;
   removeProject: (projectId: string) => void;
   clearAllProjects: () => void;
   addedProjectIds: string[];
@@ -26,65 +27,81 @@ export interface UseProjectsReturn {
 const STORAGE_KEY = 'user_projects';
 
 export function useProjects(): UseProjectsReturn {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    // Lazy initializer: load from localStorage synchronously on first render
+    // This avoids the race condition where the save effect overwrites stored data
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('Loaded projects from localStorage:', parsed);
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('Error parsing stored projects:', e);
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load projects from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    console.log('🔍 Loading projects from localStorage:', stored);
-    if (stored) {
-      try {
-        const savedProjects = JSON.parse(stored);
-        console.log('✅ Loaded projects from localStorage:', savedProjects);
-        setProjects(savedProjects);
-      } catch (e) {
-        console.warn('❌ Error parsing stored projects:', e);
-        setError('Failed to load saved projects');
-      }
-    } else {
-      console.log('📭 No projects found in localStorage');
-    }
-  }, []);
-
   // Save projects to localStorage whenever projects change
   useEffect(() => {
-    if (projects.length >= 0) { // Save even when empty
-      try {
-        console.log('💾 Saving projects to localStorage:', projects);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-        console.log('✅ Projects saved to localStorage successfully');
-      } catch (e) {
-        console.warn('❌ Error saving projects to localStorage:', e);
-      }
+    try {
+      console.log('Saving projects to localStorage:', projects);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    } catch (e) {
+      console.warn('Error saving projects to localStorage:', e);
     }
   }, [projects]);
 
-  const addProject = async (projectIdStr: string) => {
-    console.log('➕ Adding project with input:', projectIdStr);
+  const addProject = async (projectIdStr: string, projectName?: string): Promise<'added' | 'exists'> => {
+    console.log('➕ Adding project with input:', projectIdStr, 'name:', projectName);
     const projectId = projectIdStr.trim();
 
     if (!projectId || projectId === '') {
       console.error('❌ Invalid project ID format:', projectIdStr);
-      setError('Invalid project ID format');
-      return;
+      throw new Error('Invalid project ID format');
     }
 
     console.log('🔍 Checking if project exists:', projectId);
     console.log('📋 Current projects:', projects.map(p => p.id));
     if (projects.some(p => p.id === projectId)) {
       console.warn('⚠️ Project already exists:', projectId);
-      setError('Project already exists');
-      return;
+      return 'exists';
     }
 
-    console.log('✅ Creating new project with ID:', projectId);
-    // Create a new project with basic info
+    // Determine the project name
+    let resolvedName = projectName?.trim() || '';
+
+    // If no name provided, try to fetch it from the Zoho API
+    if (!resolvedName) {
+      try {
+        console.log('🌐 Fetching project name from Zoho API for ID:', projectId);
+        const response = await zohoFetch(`/api/zoho/projects/${projectId}`);
+        if (response.ok) {
+          const data = await response.json();
+          resolvedName = data.project?.name || '';
+          console.log('✅ Fetched project name from Zoho:', resolvedName);
+        } else {
+          console.warn('⚠️ Failed to fetch project from Zoho API, status:', response.status);
+        }
+      } catch (e) {
+        console.warn('⚠️ Error fetching project name from Zoho API:', e);
+      }
+    }
+
+    // Fall back to generic name if still empty (never expose raw numeric IDs to users)
+    if (!resolvedName) {
+      resolvedName = 'Unnamed Project';
+    }
+
+    console.log('✅ Creating new project with ID:', projectId, 'name:', resolvedName);
     const newProject: Project = {
       id: projectId,
-      name: `Project ${projectId}`,
-      description: `Zoho Project ${projectId}`,
+      name: resolvedName,
+      description: resolvedName,
       tasks: 0,
       completedTasks: 0,
       totalHours: 0,
@@ -95,6 +112,7 @@ export function useProjects(): UseProjectsReturn {
     console.log('📝 New project object:', newProject);
     setProjects(prev => [...prev, newProject]);
     setError(null); // Clear any previous errors
+    return 'added';
   };
 
   const removeProject = (projectId: string) => {

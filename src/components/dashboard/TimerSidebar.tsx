@@ -1,39 +1,42 @@
 'use client';
 
-import { dataProvider } from '@/lib/dataProvider';
+import { Checkpoint } from '@/types';
 import { Save } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { DurationDisplay } from './DurationDisplay';
-
-interface Checkpoint {
-  id: number;
-  startTime: Date;
-  endTime: Date | null;
-  duration: string;
-  description: string;
-  isRunning: boolean;
-  displayNumber?: number;
-}
 
 interface TimerSidebarProps {
   onSaveCheckpoint?: (checkpoint: Checkpoint) => void;
   onUpdateCheckpoint?: (checkpointId: number | string, description: string) => void;
   currentView?: 'dashboard' | 'task-matching';
   savedCheckpointId?: number | string | null;
+  loggedCheckpointIds?: Set<number>;
+  onToggleCheckpointLogged?: (checkpointId: number) => void;
 }
 
 export const TimerSidebar: React.FC<TimerSidebarProps> = ({
   onSaveCheckpoint,
   onUpdateCheckpoint,
   currentView = 'dashboard',
-  savedCheckpointId = null
+  savedCheckpointId = null,
+  loggedCheckpointIds = new Set(),
+  onToggleCheckpointLogged
 }) => {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [currentCheckpoint, setCurrentCheckpoint] = useState<Checkpoint | null>(null);
   const [inputValues, setInputValues] = useState<Record<string | number, string>>({});
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
 
-  const checkpointsManager = dataProvider.getCheckpointsManager();
+  const formatTime = useCallback((date: Date | string | null): string => {
+    if (!date) return '--:--:--';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  }, []);
 
   // Load checkpoints from localStorage on component mount
   React.useEffect(() => {
@@ -89,7 +92,32 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
   }, [currentCheckpoint]);
 
   const handleAddCheckpoint = () => {
-    checkpointsManager.addCheckpoint(checkpoints, setCheckpoints, currentCheckpoint, setCurrentCheckpoint);
+    const now = new Date();
+    const checkpointId = Date.now();
+
+    if (currentCheckpoint) {
+      const endedCheckpoint: Checkpoint = {
+        ...currentCheckpoint,
+        endTime: now,
+        duration: calculateDuration(currentCheckpoint.startTime, now),
+        isRunning: false
+      };
+      setCheckpoints(prev => [...prev, endedCheckpoint]);
+    }
+
+    // Generate default description with timer number
+    const timerNumber = checkpoints.length + (currentCheckpoint ? 1 : 0) + 1;
+    const newCheckpoint: Checkpoint = {
+      id: checkpointId,
+      startTime: now,
+      endTime: null,
+      duration: '00:00:00',
+      description: `Timer ${timerNumber}`,
+      isRunning: true
+    };
+
+    setCurrentCheckpoint(newCheckpoint);
+
     // Scroll to bottom to show the new active checkpoint
     setTimeout(() => {
       if (scrollableContainerRef.current) {
@@ -114,25 +142,23 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
     // Update input values state immediately for responsive UI
     setInputValues(prev => ({ ...prev, [checkpointId]: description }));
 
-    // Update the actual checkpoint data
-    let updatedCheckpoint: Checkpoint | null = null;
-    if (checkpointId === 'current' && currentCheckpoint) {
-      updatedCheckpoint = { ...currentCheckpoint, description };
-      setCurrentCheckpoint(updatedCheckpoint);
-    } else {
+    // Determine which checkpoint is being updated and notify parent
+    let found = false;
+
+    if (currentCheckpoint && (checkpointId === 'current' || checkpointId === currentCheckpoint.id)) {
+      // Running checkpoint
+      setCurrentCheckpoint(prev => prev ? { ...prev, description } : null);
+      found = true;
+    } else if (checkpoints.some(cp => cp.id === checkpointId)) {
+      // Completed checkpoint — check synchronously, then update state
       setCheckpoints(prev =>
-        prev.map(cp => {
-          if (cp.id === checkpointId) {
-            updatedCheckpoint = { ...cp, description };
-            return updatedCheckpoint;
-          }
-          return cp;
-        })
+        prev.map(cp => cp.id === checkpointId ? { ...cp, description } : cp)
       );
+      found = true;
     }
 
-    // Notify parent component for all checkpoint updates
-    if (updatedCheckpoint && onUpdateCheckpoint) {
+    // Notify parent component
+    if (found && onUpdateCheckpoint) {
       onUpdateCheckpoint(checkpointId, description);
     }
   };
@@ -190,25 +216,85 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
       {/* MAIN CONTENT - Scrollable Checkpoints List */}
       <div ref={scrollableContainerRef} className="px-6 py-4 min-h-0 overflow-y-auto">
         <div className="space-y-2">
-          {sortedCheckpoints.map((checkpoint) => (
+          {sortedCheckpoints.map((checkpoint) => {
+            const isLogged = loggedCheckpointIds.has(checkpoint.id);
+            return (
             <div
               key={checkpoint.id || 'current'}
-              className={`rounded-md p-2 text-xs ${
-                checkpoint.endTime
-                  ? 'bg-gray-50 dark:bg-gray-800'
-                  : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
+              className={`relative group/cp rounded-md p-2 pr-3 text-xs transition-colors duration-200 ${
+                isLogged
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700'
+                  : checkpoint.endTime
+                    ? 'bg-gray-50 dark:bg-gray-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
               }`}
             >
+                {/* Save button — vertically centered overlay on the right, appears on hover */}
+                {onSaveCheckpoint && !(currentView === 'task-matching' && savedCheckpointId === (checkpoint.id || 'current')) && (
+                  <button
+                    onClick={() => onSaveCheckpoint(checkpoint)}
+                    className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-6 pr-3 rounded-r-md
+                      bg-gradient-to-r from-transparent via-green-500/60 to-green-600 dark:via-green-600/60 dark:to-green-700
+                      opacity-0 translate-x-2 pointer-events-none
+                      group-hover/cp:opacity-100 group-hover/cp:translate-x-0 group-hover/cp:pointer-events-auto
+                      transition-all duration-200 ease-out"
+                    title="Save time log and match to tasks"
+                  >
+                    <div className="bg-white/90 dark:bg-white/95 rounded-full p-1.5 shadow-md">
+                      <Save className="w-4 h-4 text-green-700 dark:text-green-800" />
+                    </div>
+                  </button>
+                )}
+
+                {/* Floating Badge with Dual Arrows - shows in task matching mode */}
+                {currentView === 'task-matching' && savedCheckpointId === (checkpoint.id || 'current') && (
+                  <div className="absolute right-[-33px] top-0 bottom-0 z-50 flex items-center animate-pill-appear">
+                    <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white rounded-l-full p-2">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mb-1">
+                  {/* Logged checkbox — only show on completed (non-running) checkpoints */}
+                  {checkpoint.endTime && (
+                    <label
+                      className="flex items-center mr-1.5 cursor-pointer group relative"
+                      title={isLogged ? 'Marked as logged — click to unmark' : 'Mark as logged'}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isLogged}
+                        onChange={() => onToggleCheckpointLogged?.(checkpoint.id)}
+                        className="sr-only peer"
+                      />
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                        isLogged
+                          ? 'bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600'
+                          : 'border-gray-300 dark:border-gray-600 group-hover:border-green-400 dark:group-hover:border-green-500'
+                      }`}>
+                        {isLogged && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                    </label>
+                  )}
                   <input
                     type="text"
                     placeholder={`Timer ${checkpoint.displayNumber}`}
                     value={inputValues[checkpoint.id || 'current'] || ''}
                     onChange={(e) => handleUpdateDescription(checkpoint.id || 'current', e.target.value)}
                     className={`flex-1 bg-transparent text-xs font-medium border-none outline-none rounded px-1 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 ${
-                      checkpoint.endTime
-                        ? 'text-gray-700 dark:text-gray-300'
-                        : 'text-blue-700 dark:text-blue-300'
+                      isLogged
+                        ? 'text-green-700 dark:text-green-300'
+                        : checkpoint.endTime
+                          ? 'text-gray-700 dark:text-gray-300'
+                          : 'text-blue-700 dark:text-blue-300'
                     }`}
                   />
                   <div className="flex items-center space-x-2">
@@ -216,54 +302,25 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                       startTime={checkpoint.startTime}
                       isRunning={!checkpoint.endTime}
                     />
-                    <div className="relative">
-                      {onSaveCheckpoint && (
-                        <button
-                          onClick={() => {
-                            onSaveCheckpoint(checkpoint);
-                          }}
-                          className="p-1 text-green-600 hover:text-green-700 dark:text-green-500 dark:hover:text-green-400 transition-colors"
-                          title="Save time log and match to tasks"
-                        >
-                          <Save className="w-4 h-4" />
-                        </button>
-                      )}
-
-                      {/* Floating Badge with Dual Arrows - shows in task matching mode */}
-                      {currentView === 'task-matching' && savedCheckpointId === (checkpoint.id || 'current') && (
-                        <div className="absolute top-0 left-0 right-[-33px] bottom-0 z-50">
-                          <div className="bg-gray-100 dark:bg-brand-900 text-gray-900 dark:text-white rounded-l-full p-2 shadow-xl">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
-                          </div>
-
-                          {/* Curly bracket connection line */}
-                          {/* <div className="absolute top-0 left-full w-5 h-0 bg-transparent">
-                            <div className="w-5 left-0 h-5 -top-5 border-t-2 border-l-2 border-blue-50 rounded-tl-full"></div>
-                            <div className="absolute -left-5 top-5 w-5 h-5 border-b-2 border-r-2 border-blue-50 rounded-br-full"></div>
-                          </div> */}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div
                     className={`flex items-center space-x-2 ${
-                      checkpoint.endTime
-                        ? 'text-gray-600 dark:text-gray-400'
-                        : 'text-blue-700 dark:text-blue-300'
+                      isLogged
+                        ? 'text-green-600 dark:text-green-400'
+                        : checkpoint.endTime
+                          ? 'text-gray-600 dark:text-gray-400'
+                          : 'text-blue-700 dark:text-blue-300'
                     }`}
                   >
                     <span className="font-mono">
-                      {checkpointsManager.formatTime(checkpoint.startTime)}
+                      {formatTime(checkpoint.startTime)}
                     </span>
                     <span>→</span>
                     <span className="font-mono">
                       {checkpoint.endTime
-                        ? checkpointsManager.formatTime(checkpoint.endTime)
+                        ? formatTime(checkpoint.endTime)
                         : 'Running...'
                       }
                     </span>
@@ -275,7 +332,8 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
 
             {allCheckpoints.length === 0 && (
               <div className="text-center py-6 px-4">

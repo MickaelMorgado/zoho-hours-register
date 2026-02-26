@@ -10,6 +10,8 @@ export interface ZohoConfig {
   apiToken?: string;
 }
 
+
+
 export interface ZohoProject {
   id: number;
   name: string;
@@ -22,6 +24,7 @@ export interface ZohoProject {
 
 export interface ZohoTask {
   id: number;
+  id_string?: string;
   name: string;
   description?: string;
   completed: boolean;
@@ -40,9 +43,9 @@ export interface ZohoTask {
 }
 
 export interface ZohoTimeLog {
-  id?: number;
-  task_id: number;
-  project_id: number;
+  id?: string;
+  task_id: string;
+  project_id: string;
   owner: string;
   owner_name: string;
   log_date: string;
@@ -53,6 +56,23 @@ export interface ZohoTimeLog {
   bill_status?: string;
   created_time?: string;
   last_modified_time?: string;
+}
+
+/**
+ * Custom error class that preserves the HTTP status code from the Zoho API.
+ * This allows API routes to propagate the correct status (e.g. 401) to the client,
+ * enabling zohoFetch auto-refresh to detect expired tokens.
+ */
+export class ZohoApiError extends Error {
+  public readonly statusCode: number;
+  public readonly statusText: string;
+
+  constructor(statusCode: number, statusText: string, message: string) {
+    super(message);
+    this.name = 'ZohoApiError';
+    this.statusCode = statusCode;
+    this.statusText = statusText;
+  }
 }
 
 export class ZohoClient {
@@ -141,7 +161,7 @@ export class ZohoClient {
           errorMessage = JSON.stringify(errorData, null, 2);
         }
 
-        throw new Error(`Zoho API Error: ${response.status} ${response.statusText} - ${errorMessage}`);
+        throw new ZohoApiError(response.status, response.statusText, errorMessage);
       }
 
       return await response.json();
@@ -151,13 +171,15 @@ export class ZohoClient {
     }
   }
 
+
+
   // Projects API methods
   async getProjects(): Promise<ZohoProject[]> {
     const response = await this.makeRequest<{ projects: ZohoProject[] }>('projects/');
     return response.projects || [];
   }
 
-  async getProject(projectId: number): Promise<ZohoProject> {
+  async getProject(projectId: string): Promise<ZohoProject> {
     const response = await this.makeRequest<{ projects: [ZohoProject] }>(
       `projects/${projectId}/`
     );
@@ -174,7 +196,7 @@ export class ZohoClient {
     return response.tasks || [];
   }
 
-  async getTask(projectId: number, taskId: number): Promise<ZohoTask> {
+  async getTask(projectId: string, taskId: string): Promise<ZohoTask> {
     const response = await this.makeRequest<{ tasks: [ZohoTask] }>(
       `projects/${projectId}/tasks/${taskId}/`
     );
@@ -183,8 +205,8 @@ export class ZohoClient {
 
   // Time Logs API methods
   async getTimeLogs(
-    projectId?: number,
-    taskId?: number,
+    projectId?: string,
+    taskId?: string,
     params?: {
       from?: string;
       to?: string;
@@ -215,29 +237,37 @@ export class ZohoClient {
   }
 
   async createTimeLog(
-    projectId: number,
-    taskId: number,
+    projectId: string,
+    taskId: string,
     timeLog: {
       date: string;
       hours: number;
       minutes: number;
       notes?: string;
       bill_status?: 'Billable' | 'Non Billable';
+      start_time?: string;
+      end_time?: string;
     }
   ): Promise<ZohoTimeLog> {
-    const payload = {
-      date: timeLog.date,
-      hours: timeLog.hours,
-      minutes: timeLog.minutes,
-      notes: timeLog.notes || '',
-      bill_status: timeLog.bill_status || 'Billable',
-    };
+    // Zoho expects hours in "HH:MM" format (e.g. "02:30")
+    const hoursFormatted = `${String(timeLog.hours).padStart(2, '0')}:${String(timeLog.minutes).padStart(2, '0')}`;
+
+    const params = new URLSearchParams();
+    params.append('date', timeLog.date);
+    params.append('hours', hoursFormatted);
+    if (timeLog.notes) params.append('notes', timeLog.notes);
+    params.append('bill_status', timeLog.bill_status || 'Billable');
+    if (timeLog.start_time) params.append('start_time', timeLog.start_time);
+    if (timeLog.end_time) params.append('end_time', timeLog.end_time);
 
     const response = await this.makeRequest<{ timelogs: [ZohoTimeLog] }>(
       `projects/${projectId}/tasks/${taskId}/logs/`,
       {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: params.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       }
     );
 
@@ -245,9 +275,9 @@ export class ZohoClient {
   }
 
   async updateTimeLog(
-    projectId: number,
-    taskId: number,
-    logId: number,
+    projectId: string,
+    taskId: string,
+    logId: string,
     updates: Partial<{
       date: string;
       hours: number;
@@ -256,11 +286,21 @@ export class ZohoClient {
       bill_status: 'Billable' | 'Non Billable';
     }>
   ): Promise<ZohoTimeLog> {
+    const params = new URLSearchParams();
+    if (updates.date) params.append('date', updates.date);
+    if (updates.hours !== undefined) params.append('hours', String(updates.hours));
+    if (updates.minutes !== undefined) params.append('minutes', String(updates.minutes));
+    if (updates.notes !== undefined) params.append('notes', updates.notes);
+    if (updates.bill_status) params.append('bill_status', updates.bill_status);
+
     const response = await this.makeRequest<{ timelogs: [ZohoTimeLog] }>(
       `projects/${projectId}/tasks/${taskId}/logs/${logId}/`,
       {
         method: 'PUT',
-        body: JSON.stringify(updates),
+        body: params.toString(),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       }
     );
 
@@ -268,9 +308,9 @@ export class ZohoClient {
   }
 
   async deleteTimeLog(
-    projectId: number,
-    taskId: number,
-    logId: number
+    projectId: string,
+    taskId: string,
+    logId: string
   ): Promise<void> {
     await this.makeRequest(
       `projects/${projectId}/tasks/${taskId}/logs/${logId}/`,

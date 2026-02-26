@@ -16,7 +16,7 @@ interface Project {
 interface ProjectsOverviewProps {
   projects: Project[];
   onToggleProject: (projectId: string) => void;
-  onAddProject: (projectId: string) => Promise<void>;
+  onAddProject: (projectId: string, projectName?: string) => Promise<'added' | 'exists'>;
   onRemoveProject: (projectId: string) => void;
   onClearAllProjects: () => void;
   loading?: boolean;
@@ -33,10 +33,14 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
   error = null,
 }) => {
   const [newProjectId, setNewProjectId] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
   const [addingProject, setAddingProject] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [highlightProjectId, setHighlightProjectId] = useState<string | null>(null);
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Projects Overview</h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Loading projects...</p>
@@ -86,7 +90,7 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     }
 
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-200 dark:border-red-700">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-700">
         <div className="px-6 py-4 border-b border-red-200 dark:border-red-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Projects Overview</h2>
           <p className="text-sm text-red-600 dark:text-red-400 mt-1">
@@ -128,7 +132,7 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                     // Redirect to settings page
                     window.location.href = '/profile';
                   }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                   className="px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 transition-colors"
                 >
                   Go to Settings
                 </button>
@@ -144,18 +148,38 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
     if (!newProjectId.trim() || addingProject) return;
 
     setAddingProject(true);
+    setAddError(null);
+    setInfoMessage(null);
     try {
-      await onAddProject(newProjectId.trim());
-      setNewProjectId('');
+      const trimmedId = newProjectId.trim();
+      const name = newProjectName.trim() || undefined;
+      const result = await onAddProject(trimmedId, name);
+
+      if (result === 'exists') {
+        // Gentle info message instead of error
+        setInfoMessage('Project already added');
+        // Highlight the existing card and scroll to it
+        setHighlightProjectId(trimmedId);
+        setTimeout(() => setHighlightProjectId(null), 2000);
+        const el = document.getElementById(`project-card-${trimmedId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      } else {
+        // Successfully added
+        setNewProjectId('');
+        setNewProjectName('');
+      }
     } catch (error) {
       console.error('Failed to add project:', error);
+      setAddError(error instanceof Error ? error.message : 'Failed to add project');
     } finally {
       setAddingProject(false);
     }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
@@ -183,25 +207,55 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
         {/* Add Project Input */}
         <div className="mb-6">
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={newProjectId}
-              onChange={(e) => setNewProjectId(e.target.value)}
-              placeholder="Enter project ID (e.g., 970116000025708197)"
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddProject()}
-            />
+            <div className="flex flex-1 gap-2">
+              <input
+                type="text"
+                value={newProjectId}
+                onChange={(e) => { setNewProjectId(e.target.value); setAddError(null); setInfoMessage(null); }}
+                placeholder="Project ID"
+                className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddProject()}
+                disabled={addingProject}
+              />
+              <input
+                type="text"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="Project name (optional, auto-fetched from Zoho)"
+                className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddProject()}
+                disabled={addingProject}
+              />
+            </div>
             <button
               onClick={handleAddProject}
               disabled={!newProjectId.trim() || addingProject}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-brand-500 text-white rounded-md hover:bg-brand-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
-              {addingProject ? 'Adding...' : 'Add Project'}
+              {addingProject ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Adding...
+                </span>
+              ) : 'Add Project'}
             </button>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Enter a Zoho project ID to add it to your dashboard
+            Enter a Zoho project ID to add it to your dashboard. The project name will be auto-fetched if left empty.
           </p>
+          {addError && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+              {addError}
+            </p>
+          )}
+          {infoMessage && (
+             <p className="text-xs text-brand-600 dark:text-brand-400 mt-1">
+              {infoMessage}
+            </p>
+          )}
         </div>
 
         {projects.length === 0 ? (
@@ -220,10 +274,13 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
             {projects.map((project) => (
               <div
                 key={project.id}
-                className={`relative border rounded-lg p-4 hover:shadow-md transition-all duration-200 ${
-                  project.isActive
-                    ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-700'
-                    : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600'
+                id={`project-card-${project.id}`}
+                className={`relative border rounded-lg p-4 transition-all duration-500 ${
+                  highlightProjectId === project.id
+                    ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 dark:border-yellow-600 ring-2 ring-yellow-300 dark:ring-yellow-600'
+                    : project.isActive
+                      ? 'border-brand-300 bg-brand-50 dark:bg-brand-900/20 dark:border-brand-700'
+                      : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600'
                 }`}
               >
                 {/* Remove Button */}
@@ -237,13 +294,18 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
 
                 {/* Active Indicator */}
                 {project.isActive && (
-                  <div className="absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <div className="absolute top-2 right-2 w-3 h-3 bg-brand-500 rounded-full"></div>
                 )}
 
                 <div className="flex items-center justify-between mt-6">
-                  <h3 className="text-md font-semibold text-gray-900 dark:text-white pr-12 truncate max-w-[150px]" title={project.name}>
-                    {project.name}
-                  </h3>
+                  <div className="pr-12 truncate max-w-[150px]">
+                    <h3 className="text-md font-semibold text-gray-900 dark:text-white truncate" title={project.name}>
+                      {project.name}
+                    </h3>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate" title={project.id}>
+                      ID: {project.id}
+                    </p>
+                  </div>
 
                   {/* Toggle Switch */}
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -253,13 +315,8 @@ export const ProjectsOverview: React.FC<ProjectsOverviewProps> = ({
                       onChange={() => onToggleProject(project.id)}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 dark:peer-focus:ring-brand-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-600"></div>
                   </label>
-                </div>
-
-                {/* Project ID */}
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  ID: {project.id}
                 </div>
 
                 {/* Project Stats */}

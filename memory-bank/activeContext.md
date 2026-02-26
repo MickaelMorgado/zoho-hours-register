@@ -1,111 +1,70 @@
 # Active Context: Zoho Hours Register
 
 ## Current Work Focus
-- Zoho API integration implementation
-- Authentication and API client setup
-- Project and task data fetching
-- Integration with existing dashboard UI
+The core application is functional with timer, checkpoints, task matching, and time log submission all working. The app is in a usable state for daily time tracking against Zoho Projects.
 
-## Recent Changes
-- Created comprehensive memory bank with core documentation files
-- Established project scope and technical approach
-- Defined system architecture and key design patterns
-- Updated progress to reflect start of Zoho integration phase
-- **FIXED**: Corrected API endpoint to use `https://projectsapi.zoho.com/api/v3` (was using `restapi`)
-- **FIXED**: Portal ID confirmed as `632970450` (user's actual portal, not documentation example)
-- **REFACTORED**: `useProjects` hook now uses `ZohoClient` directly instead of Next.js API routes
+## Recent Changes (Latest)
+- Full timer/checkpoint system implemented with localStorage persistence
+- Zoho OAuth flow with automatic token refresh (401 interception in `zohoFetch`)
+- 4-step SetupWizard for onboarding new users
+- Profile/Settings page for managing credentials
+- Task matching with multi-strategy similarity scoring
+- Time log submission to Zoho Projects API
+- Connection status indicator component
+- Dark mode support
+- Project management (add by ID, toggle active, remove)
 
-## Next Steps
-- Integrate Zoho service into dashboard components
-- Replace dummy data usage with real Zoho API calls
-- Update data provider to use Zoho service
-- Test API integration with existing UI components
-- Add proper error handling and loading states
+## What's Working
+- Timer sidebar with checkpoint creation, duration tracking, description editing
+- Zoho OAuth token exchange and automatic refresh
+- AuthContext with connection status detection (loading/connected/disconnected/expired)
+- Setup Wizard (4-step onboarding flow)
+- Settings/Profile page for credential management
+- Project management (add by ID, toggle active, remove, clear all)
+- Task fetching from active projects via Zoho API
+- Tasks table with status/priority/project filters
+- Task matching with intelligent similarity scoring (top 50 matches)
+- Time log creation (POST to Zoho API)
+- Checkpoint logged status tracking (green highlighting)
+- Dark mode toggle
+- Connection status indicator
+
+## What Needs Work
+- **StatsCards**: Shows hardcoded/zero values — not populated from real API data
+- **Unused TailAdmin components**: Template boilerplate pages still present (calendar, charts, forms, etc.)
+- **No time log history**: Can't view/edit/delete previously submitted time logs
+- **No pagination**: Task lists show all results (could be slow for large projects)
+- **No reporting**: No analytics or time summaries
+- **ZohoClient methods unused**: `getTimeLogs`, `updateTimeLog`, `deleteTimeLog` exist but have no API routes
+- **No tests**: No unit or integration tests
+- **README**: Still contains TailAdmin template boilerplate
 
 ## Active Decisions
-- **Tech Stack Confirmed**: React + TypeScript frontend with Vite build system
-- **Deployment**: Vercel for hosting and serverless functions
-- **UI Framework**: TailAdmin React version with Tailwind CSS
-- **Database**: Minimal local storage, Vercel functions for API calls
-- **Authentication**: Direct Zoho API token via environment configuration
+- **No database**: localStorage is sufficient for single-user, single-browser use
+- **No TailAdmin layout**: Admin layout is custom (no AppSidebar/AppHeader from template)
+- **Direct API calls**: `zohoFetch` goes through Next.js API routes (not direct from browser to Zoho, due to CORS)
+- **Client-side matching**: Task similarity runs in browser to avoid AI/API costs
 
 ## Important Patterns & Preferences
-- **Component Naming**: PascalCase for components, camelCase for hooks/functions
-- **File Structure**: Feature-based organization with shared utilities
-- **State Management**: React Context for global state, local state for component-specific
-- **API Design**: Direct Zoho API calls via ZohoClient (not through Next.js API routes)
-- **Git Commits**: Conventional commits with type(scope): description format
+- **Component Naming**: PascalCase, descriptive suffixes (`Sidebar`, `Table`, `Cards`, etc.)
+- **State**: localStorage for persistence, React state for UI
+- **Auth Headers**: `x-zoho-access-token`, `x-zoho-portal-id` sent to API routes
+- **Token Format**: `1000.*` tokens use `Bearer`, others use `Zoho-oauthtoken`
+- **Git Commits**: Conventional commits (`feat:`, `fix:`, `docs:`)
 
-## Project Insights
-- **Simplified Architecture**: API token approach eliminates user management complexity
-- **Vercel Alignment**: Perfect for serverless API proxy to Zoho
-- **Offline-First**: Local storage for timers ensures usability without constant connectivity
-- **User Experience Priority**: Smart defaults and minimal steps for time logging
-- **Task Matching Strategy**: Percentage-based algorithm to show potential task matches with accuracy scores, avoiding AI costs while providing intelligent suggestions
+## Zoho API Configuration
+- **Base URL**: `https://projectsapi.zoho.com/restapi/portal/{portalId}/`
+- **Portal ID**: `632970450`
+- **Token Endpoint**: `https://accounts.zoho.com/oauth/v2/token`
+- **API Routes**: `/api/zoho/token`, `/api/zoho/projects`, `/api/zoho/projects/[id]/tasks`, `/api/zoho/projects/[id]/tasks/[id]/timelogs`
 
-## Current Challenges
-- Zoho API documentation research for correct endpoints and authentication
-- Task matching algorithm design for optimal accuracy
-- Vercel function cold start optimization
-- Balancing offline functionality with API synchronization
-
-## Open Questions
-- Specific Zoho API endpoints for projects, tasks, and time logging
-- TailAdmin version compatibility with React 18 and TypeScript
-- Task matching algorithm implementation details (string similarity metrics, threshold settings)
-- Mobile responsiveness breakpoints and layout adjustments
-
-## Important Configuration Discoveries
-
-### Zoho API Configuration
-- **Correct Base URL**: `https://projectsapi.zoho.com/restapi` (not `api/v3`)
-- **Portal ID**: `632970450` (user's actual portal ID, not documentation examples like `739121528`)
-- **Profile Settings**: Portal ID and OAuth configuration managed via `/profile` page for non-developer efficiency
-- **Header-Based Config**: Frontend sends user config via `x-zoho-portal-id` and `x-zoho-access-token` headers
-
-### API Endpoint Structure
+## Git History (7 commits)
 ```
-https://projectsapi.zoho.com/restapi/portal/{portalId}/projects/
-https://projectsapi.zoho.com/restapi/portal/{portalId}/tasks/
-https://projectsapi.zoho.com/restapi/portal/{portalId}/timelogs/
+27082e4 Add Zoho Projects API integration
+ffe8808 feat: unify floating badge and task matching view with primary brand colors
+be4f2e2 Fix timer naming consistency and preserve custom descriptions
+73c93ef fix: fix
+74ed612 fix: fix
+83b4ff3 fix: vercel setup
+79f8f6e first commit
 ```
-
-### User Configuration Flow
-1. User visits `/profile` page
-2. Enters portal ID (`632970450`) and OAuth credentials
-3. Settings saved to `localStorage` as `zoho_credentials`
-4. `useProjects` hook reads localStorage and creates `ZohoClient` directly
-5. Direct API calls to Zoho - no Next.js API route dependency
-
-## Architectural Improvements
-
-### Before (Problematic):
-```typescript
-// Going through Next.js API route - potential localhost issues
-const response = await fetch('/api/zoho/projects', { headers });
-```
-
-### After (Direct & Clean):
-```typescript
-// Direct Zoho API calls - no localhost dependency
-const zohoClient = new ZohoClient({
-  portalName: credentials.portalId,
-  apiToken: tokens.access_token,
-  clientId: process.env.NEXT_PUBLIC_ZOHO_CLIENT_ID,
-  clientSecret: process.env.NEXT_PUBLIC_ZOHO_CLIENT_SECRET,
-});
-
-const zohoProjects = await zohoClient.getProjects();
-```
-
-### Benefits of Direct API Calls:
-- **No localhost dependency** - bypasses Next.js API routes entirely
-- **Cleaner architecture** - fewer layers of abstraction
-- **Better performance** - direct API calls without HTTP overhead
-- **Simplified error handling** - direct control over API responses
-
-### Component Architecture:
-- **useProjects Hook**: Uses `ZohoClient` directly for project fetching
-- **ZohoClient**: Handles all Zoho API communication
-- **Profile Settings**: UI for user configuration (portal ID, OAuth tokens)
-- **localStorage**: Persistence layer for user credentials

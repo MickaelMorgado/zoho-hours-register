@@ -1,4 +1,4 @@
-import { ZohoClient } from '@/lib/zohoClient';
+import { ZohoClient, ZohoApiError } from '@/lib/zohoClient';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -50,22 +50,17 @@ export async function GET(
       tasks: tasksData,
     });
   } catch (error) {
-    console.error('❌ Error fetching tasks:', error);
+    console.error('Error fetching tasks:', error);
 
+    const statusCode = error instanceof ZohoApiError ? error.statusCode : 500;
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tasks';
-
-    // Check if this is an OAuth token error
-    const isOAuthError = errorMessage.toLowerCase().includes('invalid') &&
-                        (errorMessage.toLowerCase().includes('oauth') ||
-                         errorMessage.toLowerCase().includes('token') ||
-                         errorMessage.toLowerCase().includes('access'));
 
     return NextResponse.json(
       {
         error: 'Failed to fetch tasks',
         details: errorMessage
       },
-      { status: isOAuthError ? 401 : 500 }
+      { status: statusCode }
     );
   }
 }

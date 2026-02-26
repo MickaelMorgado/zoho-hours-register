@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/context/ThemeContext";
 
 interface TokenResponse {
   access_token: string;
@@ -15,10 +16,14 @@ interface Credentials {
   clientSecret: string;
   redirectUri: string;
   portalId: string;
+  portalName: string;
+  portalSlug: string;
+  displayName: string;
 }
 
 export default function Settings() {
-  const [credentials, setCredentials] = useState<Credentials>({ clientId: '', clientSecret: '', redirectUri: 'http://localhost:8080/callback', portalId: '632970450' });
+  const { theme, toggleTheme } = useTheme();
+  const [credentials, setCredentials] = useState<Credentials>({ clientId: '', clientSecret: '', redirectUri: 'http://localhost:8080/callback', portalId: '632970450', portalName: 'dengun', portalSlug: 'dengun#zp', displayName: '' });
   const [authCode, setAuthCode] = useState('');
   const [tokens, setTokens] = useState<TokenResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,9 +46,20 @@ export default function Settings() {
     if (savedCredentials) {
       try {
         const creds = JSON.parse(savedCredentials);
+        // Restore displayName from dedicated key if missing
+        if (!creds.displayName) {
+          const savedName = localStorage.getItem('zoho_display_name');
+          if (savedName) creds.displayName = savedName;
+        }
         setCredentials(prev => ({ ...prev, ...creds }));
       } catch (e) {
         console.error('Error parsing saved credentials:', e);
+      }
+    } else {
+      // Even without saved credentials, restore displayName if available
+      const savedName = localStorage.getItem('zoho_display_name');
+      if (savedName) {
+        setCredentials(prev => ({ ...prev, displayName: savedName }));
       }
     }
   }, []);
@@ -51,15 +67,21 @@ export default function Settings() {
   // Save credentials to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('zoho_credentials', JSON.stringify(credentials));
+    // Also persist displayName to dedicated key so it survives disconnect/credential resets
+    if (credentials.displayName) {
+      localStorage.setItem('zoho_display_name', credentials.displayName);
+    }
   }, [credentials]);
 
-  const handleExchangeTokens = async () => {
+  const handleExchangeTokens = async (codeOverride?: string) => {
+    const code = codeOverride || authCode;
+
     if (!credentials.clientId.trim() || !credentials.clientSecret.trim()) {
       setError('Please enter both Client ID and Client Secret');
       return;
     }
 
-    if (!authCode.trim()) {
+    if (!code.trim()) {
       setError('Please enter an authorization code');
       return;
     }
@@ -75,7 +97,7 @@ export default function Settings() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: authCode.trim(),
+          code: code.trim(),
           grant_type: 'authorization_code',
           client_id: credentials.clientId.trim(),
           client_secret: credentials.clientSecret.trim(),
@@ -104,6 +126,55 @@ export default function Settings() {
     }
   };
 
+  const handleRefreshToken = async () => {
+    if (!tokens?.refresh_token) {
+      setError('No refresh token available. Exchange an authorization code first.');
+      return;
+    }
+    if (!credentials.clientId.trim() || !credentials.clientSecret.trim()) {
+      setError('Client ID and Client Secret are required to refresh tokens.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/zoho/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+          client_id: credentials.clientId.trim(),
+          client_secret: credentials.clientSecret.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refresh token');
+      }
+
+      // Update tokens — keep existing refresh_token, update access_token
+      const updatedTokens = {
+        ...tokens,
+        access_token: data.access_token,
+        expires_in: data.expires_in,
+        token_type: data.token_type || tokens.token_type,
+      };
+      localStorage.setItem('zoho_tokens', JSON.stringify(updatedTokens));
+      setTokens(updatedTokens);
+      setSuccess('Access token refreshed successfully!');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh token');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleClearTokens = () => {
     localStorage.removeItem('zoho_tokens');
     setTokens(null);
@@ -126,7 +197,7 @@ export default function Settings() {
           </h3>
           <Link
             href="/"
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-900"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -136,6 +207,36 @@ export default function Settings() {
         </div>
 
         <div className="space-y-6">
+          {/* Appearance */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
+            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+              Appearance
+            </h4>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Switch between light and dark theme
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === 'dark'}
+                onClick={toggleTheme}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white transition duration-200 ease-in-out ${
+                    theme === 'dark' ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Zoho OAuth Configuration */}
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
             <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
@@ -165,7 +266,7 @@ export default function Settings() {
                 value={credentials.clientId}
                 onChange={(e) => setCredentials(prev => ({ ...prev, clientId: e.target.value }))}
                 placeholder="Your Zoho OAuth Client ID"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 From your Zoho OAuth application settings
@@ -183,7 +284,7 @@ export default function Settings() {
                 value={credentials.clientSecret}
                 onChange={(e) => setCredentials(prev => ({ ...prev, clientSecret: e.target.value }))}
                 placeholder="Your Zoho OAuth Client Secret"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Keep this secret and secure
@@ -201,7 +302,7 @@ export default function Settings() {
                 value={credentials.redirectUri}
                 onChange={(e) => setCredentials(prev => ({ ...prev, redirectUri: e.target.value }))}
                 placeholder="http://localhost:8080/callback"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Must match the redirect URI configured in your Zoho OAuth app
@@ -218,8 +319,18 @@ export default function Settings() {
                 id="authCode"
                 value={authCode}
                 onChange={(e) => setAuthCode(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text').trim();
+                  if (pasted) {
+                    e.preventDefault();
+                    setAuthCode(pasted);
+                    if (credentials.clientId.trim() && credentials.clientSecret.trim()) {
+                      handleExchangeTokens(pasted);
+                    }
+                  }
+                }}
                 placeholder="Paste your Zoho authorization code here"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Get this code from Zoho OAuth authorization flow
@@ -228,17 +339,27 @@ export default function Settings() {
 
             <div className="flex gap-3 mb-6">
               <button
-                onClick={handleExchangeTokens}
+                onClick={() => handleExchangeTokens()}
                 disabled={loading || !credentials.clientId.trim() || !credentials.clientSecret.trim() || !authCode.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Exchanging...' : 'Exchange for Tokens'}
               </button>
 
               {tokens && (
                 <button
+                  onClick={handleRefreshToken}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Refreshing...' : 'Refresh Access Token'}
+                </button>
+              )}
+
+              {tokens && (
+                <button
                   onClick={handleClearTokens}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                 >
                   Clear Tokens
                 </button>
@@ -296,6 +417,9 @@ export default function Settings() {
                   <p>Token Type: {tokens.token_type}</p>
                   <p>Expires In: {tokens.expires_in} seconds</p>
                   <p>Tokens are stored locally in your browser.</p>
+                  <p className="mt-1 text-green-600 dark:text-green-400 font-medium">
+                    Auto-refresh is enabled — tokens will refresh automatically when they expire.
+                  </p>
                 </div>
               </div>
             )}
@@ -306,6 +430,60 @@ export default function Settings() {
             <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
               Zoho Portal Configuration
             </h4>
+
+            {/* Display Name Input */}
+            <div className="mb-4">
+              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Your Display Name
+              </label>
+              <input
+                type="text"
+                id="displayName"
+                value={credentials.displayName}
+                onChange={(e) => setCredentials(prev => ({ ...prev, displayName: e.target.value }))}
+                placeholder="e.g. Mickael Bressane"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Your name as it appears in Zoho Projects (used to prioritize tasks assigned to you)
+              </p>
+            </div>
+
+            {/* Portal Name Input */}
+            <div className="mb-4">
+              <label htmlFor="portalName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Portal Name
+              </label>
+              <input
+                type="text"
+                id="portalName"
+                value={credentials.portalName}
+                onChange={(e) => setCredentials(prev => ({ ...prev, portalName: e.target.value }))}
+                placeholder="dengun"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Your Zoho Projects portal name
+              </p>
+            </div>
+
+            {/* Portal URL Slug Input */}
+            <div className="mb-4">
+              <label htmlFor="portalSlug" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Portal URL Slug
+              </label>
+              <input
+                type="text"
+                id="portalSlug"
+                value={credentials.portalSlug}
+                onChange={(e) => setCredentials(prev => ({ ...prev, portalSlug: e.target.value }))}
+                placeholder="dengun#zp"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                The part after <code className="bg-gray-100 dark:bg-gray-700 dark:text-gray-300 px-1 rounded">projects.zoho.com/portal/</code> in your Zoho URLs (e.g. <code className="font-semibold dark:text-gray-300">dengun#zp</code>). Used to generate correct task links.
+              </p>
+            </div>
 
             {/* Portal ID Input */}
             <div className="mb-4">
@@ -318,10 +496,10 @@ export default function Settings() {
                 value={credentials.portalId}
                 onChange={(e) => handlePortalIdChange(e.target.value)}
                 placeholder="632970450"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Your Zoho Projects portal ID (only one portal supported for now)
+                Your Zoho Projects portal ID (used for API calls)
               </p>
 
               {portalIdSuccess && (
@@ -340,9 +518,20 @@ export default function Settings() {
             <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
               Make sure your Zoho OAuth app has these scopes enabled:
             </p>
-            <code className="block text-xs bg-blue-100 dark:bg-blue-800 p-2 rounded font-mono">
-              ZohoProjects.portals.READ,ZohoProjects.tasks.ALL,ZohoProjects.bugs.READ
-            </code>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 block text-xs bg-blue-100 dark:bg-blue-800 dark:text-blue-200 p-2 rounded font-mono">
+                ZohoProjects.portals.READ,ZohoProjects.tasks.ALL,ZohoProjects.bugs.READ
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText('ZohoProjects.portals.READ,ZohoProjects.tasks.ALL,ZohoProjects.bugs.READ')}
+                className="shrink-0 p-2 text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-800 rounded transition-colors"
+                title="Copy scopes to clipboard"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
