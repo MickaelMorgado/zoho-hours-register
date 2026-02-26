@@ -416,8 +416,20 @@ export function SetupWizard() {
       </h2>
 
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        In the Zoho API Console, use your Self Client to generate a code with the
-        scopes below. Paste the code here.
+        Open the{' '}
+        <a
+          href="https://api-console.zoho.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline inline-flex items-center gap-1"
+        >
+          Zoho API Console
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+        , use your Self Client to generate a code with the scopes below, then paste
+        it here.
       </p>
 
       {/* Scopes read-only display */}

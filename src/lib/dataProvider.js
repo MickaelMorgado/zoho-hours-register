@@ -68,7 +68,7 @@ export class DataProvider {
                 allTasks.push(...transformedTasks);
               } else {
                 const errorData = await response.json().catch(() => ({}));
-                console.warn(`Failed to fetch tasks for project ${projectId}:`, response.status, errorData);
+                console.warn(`Failed to fetch tasks for project ${projectId}: HTTP ${response.status}`, JSON.stringify(errorData, null, 2));
               }
             } catch (error) {
               console.warn(`Error fetching tasks for project ${projectId}:`, error);

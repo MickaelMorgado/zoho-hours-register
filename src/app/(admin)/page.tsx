@@ -11,33 +11,39 @@ import { useAuth } from "@/context/AuthContext";
 import { useProjects } from "@/hooks/useProjects";
 import { dataProvider } from "@/lib/dataProvider";
 import { Checkpoint } from "@/types";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 
 export default function ZohoHoursDashboard() {
   const { status, credentials } = useAuth();
   const { projects, loading: projectsLoading, error: projectsError, toggleProject, addProject, removeProject, clearAllProjects, addedProjectIds } = useProjects();
   const [currentView, setCurrentView] = useState<'dashboard' | 'task-matching'>('dashboard');
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | null>(null);
-  const tasksManager = dataProvider.getTasksManager();
+  const tasksManager = useMemo(() => dataProvider.getTasksManager(), []);
 
   // Track which checkpoints have been logged — persisted in localStorage
-  const [loggedCheckpointIds, setLoggedCheckpointIds] = useState<Set<number>>(new Set());
-
-  // Load logged checkpoint IDs from localStorage on mount
-  useEffect(() => {
+  // Lazy initializer to avoid the save effect overwriting stored data on first render.
+  const [loggedCheckpointIds, setLoggedCheckpointIds] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
     try {
       const saved = localStorage.getItem('logged-checkpoint-ids');
       if (saved) {
         const ids: number[] = JSON.parse(saved);
-        setLoggedCheckpointIds(new Set(ids));
+        return new Set(ids);
       }
     } catch (e) {
       console.warn('Error loading logged checkpoint IDs:', e);
     }
-  }, []);
+    return new Set();
+  });
 
-  // Persist to localStorage whenever the set changes
+  const loggedIdsInitializedRef = useRef(false);
+
+  // Persist to localStorage whenever the set changes (after initialization)
   useEffect(() => {
+    if (!loggedIdsInitializedRef.current) {
+      loggedIdsInitializedRef.current = true;
+      return;
+    }
     localStorage.setItem('logged-checkpoint-ids', JSON.stringify([...loggedCheckpointIds]));
   }, [loggedCheckpointIds]);
 
