@@ -102,14 +102,12 @@ export class ZohoClient {
     if (token.startsWith('1000.')) {
       return {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
       };
     }
 
     // For OAuth tokens, use Zoho-oauthtoken format
     return {
       'Authorization': `Zoho-oauthtoken ${token}`,
-      'Content-Type': 'application/json',
     };
   }
 

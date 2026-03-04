@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 
 interface TokenResponse {
@@ -23,49 +23,75 @@ interface Credentials {
 
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const [credentials, setCredentials] = useState<Credentials>({ clientId: '', clientSecret: '', redirectUri: 'http://localhost:8080/callback', portalId: '632970450', portalName: 'dengun', portalSlug: 'dengun#zp', displayName: '' });
-  const [authCode, setAuthCode] = useState('');
-  const [tokens, setTokens] = useState<TokenResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [portalIdSuccess, setPortalIdSuccess] = useState('');
 
-  // Load saved data on component mount
-  useEffect(() => {
-    const savedTokens = localStorage.getItem('zoho_tokens');
-    if (savedTokens) {
-      try {
-        setTokens(JSON.parse(savedTokens));
-      } catch (e) {
-        console.error('Error parsing saved tokens:', e);
-      }
-    }
+  // Lazy initializer — read credentials from localStorage synchronously on first render
+  // so the save effect never fires with empty defaults.
+  const [credentials, setCredentials] = useState<Credentials>(() => {
+    const defaults: Credentials = {
+      clientId: '',
+      clientSecret: '',
+      redirectUri: 'http://localhost:8080/callback',
+      portalId: '632970450',
+      portalName: 'dengun',
+      portalSlug: 'dengun#zp',
+      displayName: '',
+    };
 
-    const savedCredentials = localStorage.getItem('zoho_credentials');
-    if (savedCredentials) {
-      try {
-        const creds = JSON.parse(savedCredentials);
+    if (typeof window === 'undefined') return defaults;
+
+    try {
+      const saved = localStorage.getItem('zoho_credentials');
+      if (saved) {
+        const creds = JSON.parse(saved);
         // Restore displayName from dedicated key if missing
         if (!creds.displayName) {
           const savedName = localStorage.getItem('zoho_display_name');
           if (savedName) creds.displayName = savedName;
         }
-        setCredentials(prev => ({ ...prev, ...creds }));
-      } catch (e) {
-        console.error('Error parsing saved credentials:', e);
+        return { ...defaults, ...creds };
       }
-    } else {
-      // Even without saved credentials, restore displayName if available
-      const savedName = localStorage.getItem('zoho_display_name');
-      if (savedName) {
-        setCredentials(prev => ({ ...prev, displayName: savedName }));
-      }
+    } catch (e) {
+      console.error('Error parsing saved credentials:', e);
     }
-  }, []);
 
-  // Save credentials to localStorage whenever they change
+    // Even without saved credentials, restore displayName if available
+    try {
+      const savedName = localStorage.getItem('zoho_display_name');
+      if (savedName) return { ...defaults, displayName: savedName };
+    } catch { /* ignore */ }
+
+    return defaults;
+  });
+
+  const [authCode, setAuthCode] = useState('');
+
+  // Lazy initializer for tokens too
+  const [tokens, setTokens] = useState<TokenResponse | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = localStorage.getItem('zoho_tokens');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error parsing saved tokens:', e);
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [portalIdSuccess, setPortalIdSuccess] = useState('');
+
+  // Guard: skip the very first save-effect run (the lazy initializer already
+  // wrote the correct state; we only want to persist subsequent user edits).
+  const isInitializedRef = useRef(false);
+
+  // Save credentials to localStorage whenever they change (after initialization)
   useEffect(() => {
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      return;
+    }
     localStorage.setItem('zoho_credentials', JSON.stringify(credentials));
     // Also persist displayName to dedicated key so it survives disconnect/credential resets
     if (credentials.displayName) {
@@ -239,9 +265,22 @@ export default function Settings() {
 
           {/* Zoho OAuth Configuration */}
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 dark:border-gray-700 dark:bg-gray-800">
-            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
-              Zoho OAuth Configuration
-            </h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                Zoho OAuth Configuration
+              </h4>
+              <a
+                href="https://api-console.zoho.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              >
+                Zoho API Console
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
 
             {success && (
               <div className="mb-4 rounded-md bg-green-50 p-4 dark:bg-green-900/20">
@@ -333,7 +372,16 @@ export default function Settings() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Get this code from Zoho OAuth authorization flow
+                Generate a code in the{' '}
+                <a
+                  href="https://api-console.zoho.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                >
+                  Zoho API Console
+                </a>
+                {' '}using your Self Client
               </p>
             </div>
 

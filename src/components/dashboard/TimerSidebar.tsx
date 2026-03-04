@@ -2,8 +2,9 @@
 
 import { Checkpoint } from '@/types';
 import { Save } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { DurationDisplay } from './DurationDisplay';
+import { EditableTime } from './EditableTime';
 
 interface TimerSidebarProps {
   onSaveCheckpoint?: (checkpoint: Checkpoint) => void;
@@ -22,65 +23,66 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
   loggedCheckpointIds = new Set(),
   onToggleCheckpointLogged
 }) => {
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
-  const [currentCheckpoint, setCurrentCheckpoint] = useState<Checkpoint | null>(null);
-  const [inputValues, setInputValues] = useState<Record<string | number, string>>({});
-  const scrollableContainerRef = useRef<HTMLDivElement>(null);
-
-  const formatTime = useCallback((date: Date | string | null): string => {
-    if (!date) return '--:--:--';
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return dateObj.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  }, []);
-
-  // Load checkpoints from localStorage on component mount
-  React.useEffect(() => {
-    const savedCheckpoints = localStorage.getItem('zoho-checkpoints');
-    const savedCurrentCheckpoint = localStorage.getItem('current-checkpoint');
-
-    if (savedCheckpoints) {
-      try {
-        const parsed = JSON.parse(savedCheckpoints);
-        const loadedCheckpoints = parsed.map((cp: any) => ({
+  // Lazy initializer — read checkpoints from localStorage synchronously on first render
+  // so the save effect never fires with empty defaults (same pattern as profile page fix).
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('zoho-checkpoints');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.map((cp: any) => ({
           ...cp,
           startTime: new Date(cp.startTime),
           endTime: cp.endTime ? new Date(cp.endTime) : cp.endTime,
           description: cp.description || ''
         }));
-        setCheckpoints(loadedCheckpoints);
-      } catch (e) {
-        console.error('Error loading checkpoints:', e);
       }
+    } catch (e) {
+      console.error('Error loading checkpoints:', e);
     }
+    return [];
+  });
 
-    if (savedCurrentCheckpoint) {
-      try {
-        const parsed = JSON.parse(savedCurrentCheckpoint);
-        const loadedCurrentCheckpoint = {
+  // Lazy initializer for current checkpoint
+  const [currentCheckpoint, setCurrentCheckpoint] = useState<Checkpoint | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = localStorage.getItem('current-checkpoint');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
           ...parsed,
           startTime: new Date(parsed.startTime),
           endTime: parsed.endTime ? new Date(parsed.endTime) : null,
           description: parsed.description || ''
         };
-        setCurrentCheckpoint(loadedCurrentCheckpoint);
-      } catch (e) {
-        console.error('Error loading current checkpoint:', e);
       }
+    } catch (e) {
+      console.error('Error loading current checkpoint:', e);
     }
-  }, []);
+    return null;
+  });
 
-  // Save checkpoints to localStorage whenever they change
+  const [inputValues, setInputValues] = useState<Record<string | number, string>>({});
+  const scrollableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Guard: skip the very first save-effect run (the lazy initializer already
+  // wrote the correct state; we only want to persist subsequent user changes).
+  const isInitializedRef = useRef(false);
+
+  // Save checkpoints to localStorage whenever they change (after initialization)
   React.useEffect(() => {
+    if (!isInitializedRef.current) return;
     localStorage.setItem('zoho-checkpoints', JSON.stringify(checkpoints));
   }, [checkpoints]);
 
-  // Save current checkpoint to localStorage whenever it changes
+  // Save current checkpoint to localStorage whenever it changes (after initialization)
   React.useEffect(() => {
+    if (!isInitializedRef.current) {
+      isInitializedRef.current = true;
+      return;
+    }
     if (currentCheckpoint) {
       localStorage.setItem('current-checkpoint', JSON.stringify({
         ...currentCheckpoint,
@@ -163,6 +165,32 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
     }
   };
 
+  /** Update the start or end time of a checkpoint and recalculate its duration */
+  const handleUpdateTime = (checkpointId: number | string, field: 'startTime' | 'endTime', newDate: Date) => {
+    if (currentCheckpoint && (checkpointId === 'current' || checkpointId === currentCheckpoint.id)) {
+      setCurrentCheckpoint(prev => {
+        if (!prev) return null;
+        const updated = { ...prev, [field]: newDate };
+        // Recalculate duration if both start and end are set
+        if (updated.endTime) {
+          updated.duration = calculateDuration(updated.startTime, updated.endTime);
+        }
+        return updated;
+      });
+    } else {
+      setCheckpoints(prev =>
+        prev.map(cp => {
+          if (cp.id !== checkpointId) return cp;
+          const updated = { ...cp, [field]: newDate };
+          if (updated.endTime) {
+            updated.duration = calculateDuration(updated.startTime, updated.endTime);
+          }
+          return updated;
+        })
+      );
+    }
+  };
+
   // Initialize input values for new checkpoints and sync with current descriptions
   // Only set defaults for checkpoints that don't already have custom input values
   React.useEffect(() => {
@@ -180,6 +208,45 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
     });
   }, [checkpoints, currentCheckpoint]);
 
+  /** Insert a new completed checkpoint between two existing ones.
+   *  `afterIndex` is the index in `sortedCheckpoints` after which to insert. */
+  const handleInsertCheckpoint = (afterIndex: number) => {
+    const prev = sortedCheckpoints[afterIndex];
+    const next = sortedCheckpoints[afterIndex + 1];
+    if (!prev || !next) return;
+
+    // Use prev's end as start, next's start as end
+    const startTime = prev.endTime ? new Date(prev.endTime) : new Date(prev.startTime);
+    const endTime = new Date(next.startTime);
+
+    const newCheckpoint: Checkpoint = {
+      id: Date.now(),
+      startTime,
+      endTime,
+      duration: calculateDuration(startTime, endTime),
+      description: '',
+      isRunning: false,
+    };
+
+    // Insert into the completed checkpoints array at the correct position.
+    // We cannot simply append + sort because when start times are equal
+    // (e.g. prev.endTime === next.startTime), stable sort preserves insertion
+    // order, placing the new checkpoint after `next` — i.e. at the wrong spot.
+    setCheckpoints(prev => {
+      // Find the index of `next` in the state array so we can insert just before it.
+      const nextIdx = prev.findIndex(cp => cp.id === next.id);
+      if (nextIdx === -1) {
+        // Fallback: append + sort (shouldn't happen)
+        const updated = [...prev, newCheckpoint];
+        updated.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+        return updated;
+      }
+      const updated = [...prev];
+      updated.splice(nextIdx, 0, newCheckpoint);
+      return updated;
+    });
+  };
+
   // Create all checkpoints array with display numbers
   const allCheckpoints = [...checkpoints];
   if (currentCheckpoint) {
@@ -191,7 +258,12 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
     .sort((a, b) => {
       if (a.isRunning && !b.isRunning) return 1; // Active goes to bottom
       if (!a.isRunning && b.isRunning) return -1; // Active goes to bottom
-      return a.startTime.getTime() - b.startTime.getTime(); // Otherwise sort by time
+      const diff = a.startTime.getTime() - b.startTime.getTime();
+      if (diff !== 0) return diff;
+      // Tiebreaker: earlier endTime first (inserted checkpoints end before the next one starts)
+      const aEnd = a.endTime ? a.endTime.getTime() : Infinity;
+      const bEnd = b.endTime ? b.endTime.getTime() : Infinity;
+      return aEnd - bEnd;
     })
     .map((checkpoint, index) => ({
       ...checkpoint,
@@ -214,13 +286,43 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
       </div>
 
       {/* MAIN CONTENT - Scrollable Checkpoints List */}
-      <div ref={scrollableContainerRef} className="px-6 py-4 min-h-0 overflow-y-auto">
-        <div className="space-y-2">
-          {sortedCheckpoints.map((checkpoint) => {
+      <div ref={scrollableContainerRef} className="px-3 py-4 min-h-0 overflow-y-auto">
+        <div>
+          {sortedCheckpoints.map((checkpoint, index) => {
             const isLogged = loggedCheckpointIds.has(checkpoint.id);
+            const prevCheckpoint = index > 0 ? sortedCheckpoints[index - 1] : null;
+            // Show insert button between two completed (non-running) checkpoints
+            const canInsertBefore = prevCheckpoint && prevCheckpoint.endTime && !prevCheckpoint.isRunning && !checkpoint.isRunning;
+
             return (
+            <React.Fragment key={checkpoint.id || 'current'}>
+              {/* Insert-between divider — appears on hover */}
+              {canInsertBefore && (
+                <div className="group/insert relative h-3 flex items-center justify-center -my-0.5 z-10">
+                  {/* Line */}
+                  <div className="absolute inset-x-2 h-px bg-transparent group-hover/insert:bg-blue-300 dark:group-hover/insert:bg-blue-600 transition-colors duration-150" />
+                  {/* Plus button */}
+                  <button
+                    onClick={() => handleInsertCheckpoint(index - 1)}
+                    className="relative w-5 h-5 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
+                      flex items-center justify-center
+                      opacity-0 scale-75 group-hover/insert:opacity-100 group-hover/insert:scale-100
+                      hover:!bg-blue-500 hover:!border-blue-500 hover:text-white
+                      text-gray-400 dark:text-gray-500
+                      transition-all duration-150 cursor-pointer"
+                    title="Insert timer here"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {/* Gap between cards when no insert divider */}
+              {index > 0 && !canInsertBefore && <div className="h-2" />}
+
             <div
-              key={checkpoint.id || 'current'}
               className={`relative group/cp rounded-md p-2 pr-3 text-xs transition-colors duration-200 ${
                 isLogged
                   ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700'
@@ -301,12 +403,13 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                     <DurationDisplay
                       startTime={checkpoint.startTime}
                       isRunning={!checkpoint.endTime}
+                      endTime={checkpoint.endTime}
                     />
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div
-                    className={`flex items-center space-x-2 ${
+                    className={`flex items-center space-x-1 ${
                       isLogged
                         ? 'text-green-600 dark:text-green-400'
                         : checkpoint.endTime
@@ -314,16 +417,24 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                           : 'text-blue-700 dark:text-blue-300'
                     }`}
                   >
-                    <span className="font-mono">
-                      {formatTime(checkpoint.startTime)}
-                    </span>
-                    <span>→</span>
-                    <span className="font-mono">
-                      {checkpoint.endTime
-                        ? formatTime(checkpoint.endTime)
-                        : 'Running...'
-                      }
-                    </span>
+                    <EditableTime
+                      value={checkpoint.startTime}
+                      onChange={(newDate) => handleUpdateTime(checkpoint.id || 'current', 'startTime', newDate)}
+                    />
+                    <span className="text-[10px] opacity-60">→</span>
+                    {checkpoint.endTime ? (
+                      <EditableTime
+                        value={checkpoint.endTime}
+                        onChange={(newDate) => handleUpdateTime(checkpoint.id || 'current', 'endTime', newDate)}
+                      />
+                    ) : (
+                      <EditableTime
+                        value={new Date()}
+                        onChange={() => {}}
+                        disabled
+                        placeholder="Running..."
+                      />
+                    )}
                   </div>
                   {!checkpoint.endTime && (
                     <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 rounded">
@@ -332,6 +443,7 @@ export const TimerSidebar: React.FC<TimerSidebarProps> = ({
                   )}
                 </div>
               </div>
+            </React.Fragment>
             );
             })}
 

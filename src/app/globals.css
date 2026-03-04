@@ -504,6 +504,79 @@ span.flatpickr-weekday,
   @apply right-0;
 }
 
+/* ── Compact time-only flatpickr (used by EditableTime in sidebar) ── */
+.flatpickr-calendar.noCalendar {
+  padding: 0.375rem !important;
+  border-radius: 0.5rem !important;
+  width: auto !important;
+  min-width: 0 !important;
+}
+
+.flatpickr-calendar.noCalendar .flatpickr-time {
+  max-height: 2.25rem !important;
+  border: 0 !important;
+}
+
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper {
+  width: 2.25rem !important;
+  height: 2rem !important;
+}
+
+/* Hide spinner arrows — users type directly or use keyboard arrows */
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper span.arrowUp,
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper span.arrowDown {
+  display: none !important;
+}
+
+/* Make the number inputs directly clickable and editable */
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input {
+  font-size: 0.8125rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+  cursor: text !important;
+  text-align: center !important;
+  padding: 0 !important;
+  border-radius: 0.25rem !important;
+}
+
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input:focus {
+  background-color: #eff6ff !important;
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -1px !important;
+}
+
+:is(.dark *) .flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+:is(.dark *) .flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input:hover {
+  background-color: #374151 !important;
+}
+
+:is(.dark *) .flatpickr-calendar.noCalendar .flatpickr-time .numInputWrapper input:focus {
+  background-color: #1e3a5f !important;
+  outline: 2px solid #3b82f6 !important;
+}
+
+.flatpickr-calendar.noCalendar .flatpickr-time .flatpickr-time-separator {
+  font-size: 0.8125rem !important;
+  font-weight: 700 !important;
+  color: #9ca3af !important;
+  width: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:is(.dark *) .flatpickr-calendar.noCalendar .flatpickr-time .flatpickr-time-separator {
+  color: #6b7280 !important;
+}
+
 .fc .fc-view-harness {
   @apply max-w-full overflow-x-auto custom-scrollbar;
 }

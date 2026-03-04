@@ -5,15 +5,18 @@ import React, { useEffect, useState, useMemo } from 'react';
 interface DurationDisplayProps {
   startTime: Date;
   isRunning: boolean;
+  /** For stopped checkpoints, pass the end time so duration recalculates when times are edited */
+  endTime?: Date | null;
 }
 
-export const DurationDisplay: React.FC<DurationDisplayProps> = ({ startTime, isRunning }) => {
+export const DurationDisplay: React.FC<DurationDisplayProps> = ({ startTime, isRunning, endTime }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Calculate duration based on props and current time
   const duration = useMemo(() => {
-    return calculateDuration(startTime, currentTime);
-  }, [startTime, currentTime, isRunning]);
+    const end = isRunning ? currentTime : (endTime ?? currentTime);
+    return calculateDuration(startTime, end);
+  }, [startTime, currentTime, isRunning, endTime]);
 
   useEffect(() => {
     if (!isRunning) return;

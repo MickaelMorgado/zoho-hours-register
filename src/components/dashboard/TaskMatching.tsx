@@ -225,24 +225,31 @@ export const TaskMatching: React.FC<TaskMatchingProps> = ({
     }
   }
 
+  // Keep a stable ref to fetchTasksFromProjects so the effect only re-runs
+  // when activeProjectIds changes, not when the function reference changes.
+  const fetchTasksRef = React.useRef(fetchTasksFromProjects);
+  fetchTasksRef.current = fetchTasksFromProjects;
+
   // Fetch tasks when active project IDs change
   useEffect(() => {
+    let cancelled = false;
+
     const fetchTasks = async () => {
       if (activeProjectIds.length === 0) {
         setTasks([]);
         return;
       }
 
-      if (fetchTasksFromProjects) {
+      if (fetchTasksRef.current) {
         setLoading(true);
         try {
-          const fetchedTasks = await fetchTasksFromProjects(activeProjectIds);
-          setTasks(fetchedTasks);
+          const fetchedTasks = await fetchTasksRef.current(activeProjectIds);
+          if (!cancelled) setTasks(fetchedTasks);
         } catch (error) {
           console.error('Failed to fetch tasks:', error);
-          setTasks(initialTasks); // Fallback to initial tasks
+          if (!cancelled) setTasks(initialTasks); // Fallback to initial tasks
         } finally {
-          setLoading(false);
+          if (!cancelled) setLoading(false);
         }
       } else {
         setTasks(initialTasks);
@@ -250,8 +257,10 @@ export const TaskMatching: React.FC<TaskMatchingProps> = ({
     };
 
     fetchTasks();
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProjectIds, fetchTasksFromProjects]);
+  }, [activeProjectIds]);
 
   const taskMatches = useMemo(() => {
     const normalizedUserName = currentUserName.trim().toLowerCase();
