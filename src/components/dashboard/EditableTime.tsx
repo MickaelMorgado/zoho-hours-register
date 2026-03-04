@@ -57,10 +57,15 @@ export const EditableTime: React.FC<EditableTimeProps> = ({
 
   // Stable refs so flatpickr callbacks always see the latest values
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-
   const valueRef = useRef(value);
-  valueRef.current = value;
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   /** Try to commit a typed value; returns true if valid */
   const commitTypedValue = useCallback((text: string) => {
@@ -116,7 +121,7 @@ export const EditableTime: React.FC<EditableTimeProps> = ({
         setIsEditing(false);
       },
     });
-  }, [disabled, commitTypedValue]);
+  }, [disabled]);
 
   useEffect(() => {
     initPicker();

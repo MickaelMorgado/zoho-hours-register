@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ArrowRightIcon } from '../../icons';
 import { TaskFilters, TaskFilterValues, ProjectInfo, applyTaskFilters } from './TaskFilters';
 
@@ -37,33 +37,58 @@ export const TasksTable: React.FC<TasksTableProps> = ({
   const [filters, setFilters] = useState<TaskFilterValues>({ status: 'all', priority: 'all', project: 'all' });
   const [tasks, setTasks] = useState(initialTasks);
   const [loading, setLoading] = useState(false);
+  const [lastFetchError, setLastFetchError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [debouncedProjectIds, setDebouncedProjectIds] = useState(activeProjectIds);
 
-  // Fetch tasks when active project IDs change
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (activeProjectIds.length === 0) {
-        setTasks([]);
-        return;
-      }
+    const timeoutId = window.setTimeout(() => setDebouncedProjectIds(activeProjectIds), 400);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeProjectIds]);
 
-      if (fetchTasksFromProjects) {
-        setLoading(true);
-        try {
-          const fetchedTasks = await fetchTasksFromProjects(activeProjectIds);
-          setTasks(fetchedTasks);
-        } catch (error) {
-          console.error('Failed to fetch tasks:', error);
-          setTasks(initialTasks); // Fallback to initial tasks
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setTasks(initialTasks);
-      }
-    };
+  const executeFetch = useCallback(async (projectIds: string[], forceRefresh = false) => {
+    if (projectIds.length === 0) {
+      setTasks([]);
+      setLastFetchError(null);
+      setLoading(false);
+      if (forceRefresh) setRefreshing(false);
+      return;
+    }
 
-    fetchTasks();
-  }, [activeProjectIds, fetchTasksFromProjects, initialTasks]);
+    if (!fetchTasksFromProjects) {
+      setTasks(initialTasks);
+      setLastFetchError(null);
+      setLoading(false);
+      if (forceRefresh) setRefreshing(false);
+      return;
+    }
+
+    setLoading(true);
+    if (forceRefresh) setRefreshing(true);
+    setLastFetchError(null);
+
+    try {
+      const fetchedTasks = await fetchTasksFromProjects(projectIds, { refreshCache: forceRefresh });
+      setTasks(fetchedTasks);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch tasks';
+      setLastFetchError(message);
+    } finally {
+      setLoading(false);
+      if (forceRefresh) {
+        setRefreshing(false);
+      }
+    }
+  }, [fetchTasksFromProjects, initialTasks]);
+
+  useEffect(() => {
+    executeFetch(debouncedProjectIds, false);
+  }, [debouncedProjectIds, executeFetch]);
+
+  const handleManualRefresh = useCallback(() => {
+    if (!fetchTasksFromProjects || debouncedProjectIds.length === 0) return;
+    executeFetch(debouncedProjectIds, true);
+  }, [debouncedProjectIds, executeFetch, fetchTasksFromProjects]);
 
   // Use external projects list (real names from useProjects) when available,
   // otherwise derive from task data
@@ -74,6 +99,8 @@ export const TasksTable: React.FC<TasksTableProps> = ({
           tasks.map(task => [task.projectId || task.id, { id: String(task.projectId || task.id), name: task.projectName }])
         ).values()
       );
+
+  const canRefresh = Boolean(fetchTasksFromProjects && debouncedProjectIds.length > 0);
 
   // Get unique status values from tasks
   const uniqueStatuses = useMemo(
@@ -86,11 +113,41 @@ export const TasksTable: React.FC<TasksTableProps> = ({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mt-8">
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tasks List</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">All tasks from your projects with filtering options</p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tasks List</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">All tasks from your projects with filtering options</p>
+          </div>
+          {canRefresh && (
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={loading || refreshing}
+              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh tasks'}
+            </button>
+          )}
+        </div>
       </div>
       <div className="p-6">
         <div className="space-y-6">
+          {lastFetchError && (
+            <div className="flex flex-col gap-3 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 md:flex-row md:items-center md:justify-between">
+              <span>{lastFetchError}</span>
+              {canRefresh && (
+                <button
+                  type="button"
+                  onClick={handleManualRefresh}
+                  disabled={loading || refreshing}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-yellow-900 bg-white border border-yellow-300 rounded-md hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
+                >
+                  Retry now
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Filters */}
           <TaskFilters
             filters={filters}
